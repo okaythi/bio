@@ -1,14 +1,8 @@
 name = "bio"
 compatibility_date = "2024-03-20"
 
-[assets]
-directory = "./dist"
+pages_build_output_dir = "./dist"
 
 [[r2_buckets]]
 binding = "movies"
 bucket_name = "movies"
-
-[[routes]]
-pattern = "bio.sudothy.me"
-zone_name = "sudothy.me"
-custom_domain = true
