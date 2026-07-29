@@ -339,6 +339,13 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
           </button>
         </div>
 
+        {/* Clickable middle area to pause/play */}
+        <div 
+          className="controls-middle" 
+          style={{ flexGrow: 1, width: '100%', cursor: 'pointer' }} 
+          onClick={togglePlay}
+        />
+
         {showSkipIntro && (
           <button className="skip-intro-btn" onClick={handleSkipIntro}>
             Skip Intro
