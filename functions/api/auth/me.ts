@@ -1,0 +1,70 @@
+export interface Env {
+  DB: D1Database;
+}
+
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+
+  try {
+    const cookieHeader = context.request.headers.get("Cookie") || "";
+    const match = cookieHeader.match(/session_id=([^;]+)/);
+    const sessionId = match ? match[1] : null;
+
+    if (!sessionId) {
+      return new Response(JSON.stringify({ user: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
+    const session = await context.env.DB.prepare(`
+      SELECT users.id, users.email, users.role, users.status, sessions.expires_at 
+      FROM sessions 
+      JOIN users ON sessions.user_id = users.id 
+      WHERE sessions.id = ? AND sessions.expires_at > CURRENT_TIMESTAMP AND users.status = 'active'
+    `).bind(sessionId).first<{ id: string; email: string; role: string; status: string; expires_at: string }>();
+
+    if (!session) {
+      return new Response(JSON.stringify({ user: null }), {
+        status: 200,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
+    const profile = await context.env.DB.prepare(
+      "SELECT display_name, avatar_url, locale, timezone FROM user_profiles WHERE user_id = ?"
+    ).bind(session.id).first();
+
+    const subscription = await context.env.DB.prepare(
+      "SELECT plan_tier, status FROM user_subscriptions WHERE user_id = ?"
+    ).bind(session.id).first();
+
+    const preferences = await context.env.DB.prepare(
+      "SELECT theme, default_audio_lang, default_subtitle_lang, auto_play_next, player_volume, ui_settings_json FROM user_preferences WHERE user_id = ?"
+    ).bind(session.id).first();
+
+    return new Response(
+      JSON.stringify({
+        user: {
+          id: session.id,
+          email: session.email,
+          role: session.role,
+          profile,
+          subscription,
+          preferences
+        }
+      }),
+      { headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: `Session verification error: ${message}` }), {
+      status: 500,
+      headers: { "Content-Type": "application/json", ...corsHeaders }
+    });
+  }
+};

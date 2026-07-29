@@ -4,6 +4,14 @@ export interface Env {
   movies: R2Bucket;
 }
 
+interface MovieItem {
+  id: string;
+  title: string;
+  year: string;
+  videoUrl: string;
+  subtitleUrl: string;
+}
+
 export const onRequest: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -22,7 +30,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
 
     const objects = await bucket.list();
-    const moviesMap = new Map<string, any>();
+    const moviesMap = new Map<string, MovieItem>();
 
     for (const obj of objects.objects) {
       if (!obj.key.endsWith(".mp4") && !obj.key.endsWith(".mkv")) continue;
@@ -59,8 +67,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
     });
 
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: `BIO-500: ${error.message}` }), {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: `BIO-500: ${message}` }), {
       status: 500,
       headers: corsHeaders
     });

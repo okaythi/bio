@@ -6,3 +6,9 @@ pages_build_output_dir = "./dist"
 [[r2_buckets]]
 binding = "movies"
 bucket_name = "movies"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "bio-db"
+database_id = "ac9e28c6-ac20-4c43-893b-d3a41d687d47"
+
