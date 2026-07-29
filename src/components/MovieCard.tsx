@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getImageUrl } from '../services/tmdb';
 import type { TMDBMovie } from '../services/tmdb';
 import type { MovieMetadata } from '../config/library';
@@ -11,6 +11,15 @@ interface MovieCardProps {
 
 export default function MovieCard({ movie, metadata, onClick }: MovieCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+
+  useEffect(() => {
+    // Read saved progress from localStorage (101% reliable storage technique)
+    const saved = localStorage.getItem(`bio-progress-${metadata.id}`);
+    if (saved) {
+      setProgress(parseFloat(saved));
+    }
+  }, [metadata.id]);
 
   return (
     <div 
@@ -26,6 +35,11 @@ export default function MovieCard({ movie, metadata, onClick }: MovieCardProps) 
         decoding="async"
         className="movie-poster"
       />
+      {progress !== null && progress > 0 && (
+        <div className="movie-card-progress-container">
+          <div className="movie-card-progress-bar" style={{ width: `${progress}%` }}></div>
+        </div>
+      )}
     </div>
   );
 }
