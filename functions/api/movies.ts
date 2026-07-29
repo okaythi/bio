@@ -9,7 +9,7 @@ interface MovieItem {
   title: string;
   year: string;
   videoUrl: string;
-  subtitleUrl: string;
+  subtitles: { lang: string; url: string }[];
 }
 
 export const onRequest: PagesFunction<Env> = async (context) => {
@@ -32,6 +32,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const objects = await bucket.list();
     const moviesMap = new Map<string, MovieItem>();
 
+    // Pass 1: Scan video files and create movie entries with empty subtitles arrays
     for (const obj of objects.objects) {
       if (!obj.key.endsWith(".mp4") && !obj.key.endsWith(".mkv")) continue;
 
@@ -49,15 +50,35 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
 
       if (!moviesMap.has(folderName)) {
-        const urlBase = `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1].replace('.mp4', '').replace('.mkv', ''))}`;
         moviesMap.set(folderName, {
           id: folderName,
           title,
           year,
           videoUrl: `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`,
-          subtitleUrl: `${urlBase}.srt`
+          subtitles: []
         });
       }
+    }
+
+    // Pass 2: Scan all objects for .srt files and populate subtitles arrays
+    for (const obj of objects.objects) {
+      if (!obj.key.endsWith(".srt")) continue;
+
+      const parts = obj.key.split('/');
+      if (parts.length < 2) continue;
+
+      const folderName = parts[0];
+      const movie = moviesMap.get(folderName);
+      if (!movie) continue;
+
+      const fileName = parts[1];
+      const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
+      const lang = langMatch ? langMatch[1] : "en";
+
+      movie.subtitles.push({
+        lang,
+        url: `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`
+      });
     }
 
     return new Response(JSON.stringify(Array.from(moviesMap.values())), {
