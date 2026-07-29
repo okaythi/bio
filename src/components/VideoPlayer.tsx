@@ -379,6 +379,10 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
             setActiveVideoUrl(metadata.h264Url);
             setIsUsingH264Fallback(true);
             setVideoError(null);
+          } else if (isUsingH264Fallback) {
+            const bioMsg = 'BIO-008: Failed to play H.264 fallback stream. Please check video file format.';
+            console.error(`[BIO-008] H.264 Fallback Playback Error:`, mediaError?.message || mediaError);
+            setVideoError(bioMsg);
           } else if (isCodecOrFormatError) {
             const bioMsg = 'BIO-006: Unsupported video codec (HEVC/H.265). This browser cannot play this video format.';
             console.error(
