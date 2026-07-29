@@ -54,12 +54,12 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [experiments, setExperiments] = useState<string[]>(["public_beta_v1"]);
+  const [experiments, setExperiments] = useState<string[]>(["2026-07_public_beta_v1", "2026-07_auto_play_next_video"]);
   const [likedMovies, setLikedMovies] = useState<string[]>([]);
   const [flags, setFlags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isThyOwner = Boolean(user && (user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' || user.email.toLowerCase() === 'mathyschepers@proton.me'));
+  const isThyOwner = Boolean(user && user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590');
   const isStaff = Boolean(user && (user.role === 'admin' || flags.includes('is_staff') || isThyOwner));
   const canEditFlags = Boolean(user && (flags.includes('edit_flags') || isThyOwner));
 
@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await res.json();
         if (data.user) {
           setUser(data.user);
-          const isUserThy = data.user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' || data.user.email.toLowerCase() === 'mathyschepers@proton.me';
+          const isUserThy = data.user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590';
           setFlags(data.user.flags || (isUserThy ? ['is_staff', 'edit_flags'] : []));
           telemetry.track('session_restore', { userId: data.user.id });
           fetchUserExtras();
@@ -128,7 +128,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
     setUser(data.user);
-    const isUserThy = data.user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' || data.user.email.toLowerCase() === 'mathyschepers@proton.me';
+    const isUserThy = data.user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590';
     const userFlags = data.user.flags || (isUserThy ? ['is_staff', 'edit_flags'] : []);
     setFlags(userFlags);
     telemetry.track('user_login', { userId: data.user.id, email: data.user.email });
@@ -155,7 +155,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setFlags([]);
     setLikedMovies([]);
-    setExperiments(["public_beta_v1"]);
+    setExperiments(["2026-07_public_beta_v1", "2026-07_auto_play_next_video"]);
   };
 
   const updateProfile = async (data: Partial<UserProfile>) => {

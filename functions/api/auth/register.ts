@@ -84,7 +84,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       "INSERT INTO notification_preferences (user_id) VALUES (?)"
     ).bind(userId).run();
 
-    const defaultExpJson = JSON.stringify({ EXPERIMENTS: ["public_beta_v1"], created_at: new Date().toISOString() });
+    const defaultExpJson = JSON.stringify({ EXPERIMENTS: ["2026-07_public_beta_v1", "2026-07_auto_play_next_video"], created_at: new Date().toISOString() });
     await context.env.DB.prepare(
       "INSERT INTO user_metadata_ext (user_id, namespace, data_json) VALUES (?, 'experiments', ?)"
     ).bind(userId, defaultExpJson).run();

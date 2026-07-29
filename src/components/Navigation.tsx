@@ -45,7 +45,12 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
   }, []);
 
   const isBetaUser = Boolean(
-    user && (experiments.includes('public_beta_v1') || experiments.includes('beta_user'))
+    user && (
+      experiments.includes('2026-07_public_beta_v1') || 
+      experiments.includes('2026-07_beta_user') || 
+      experiments.includes('public_beta_v1') || 
+      experiments.includes('beta_user')
+    )
   );
 
   return (
