@@ -671,3 +671,90 @@ body {
   .modal-details { flex-direction: column; }
   .nav-links { display: none; }
 }
+
+/* Sleek Netflix Navigation Search Box */
+.nav-search-box {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 6px 12px;
+  border-radius: 4px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.nav-search-box:focus-within {
+  border-color: rgba(255, 255, 255, 0.8);
+  background: rgba(0, 0, 0, 0.95);
+  box-shadow: 0 0 10px rgba(229, 9, 20, 0.3);
+}
+
+.nav-search-input {
+  background: transparent;
+  border: none;
+  color: #fff;
+  outline: none;
+  font-size: 14px;
+  width: 220px;
+  margin-left: 8px;
+  font-family: inherit;
+}
+
+.nav-search-clear {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  transition: color 0.2s;
+}
+
+.nav-search-clear:hover {
+  color: #fff;
+}
+
+/* Netflix Search Results Container & Grid */
+.search-results-container {
+  padding: 100px 4% 60px;
+  min-height: 80vh;
+}
+
+.search-results-header {
+  font-size: 1.6rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+.search-results-header span {
+  color: #fff;
+  font-weight: 700;
+}
+
+.search-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 24px 16px;
+}
+
+.search-grid .movie-card {
+  flex: none;
+}
+
+.no-results {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 100px 20px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.no-results p {
+  font-size: 1.2rem;
+}
