@@ -397,7 +397,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                     value={volume} 
                     onChange={handleVolumeChange}
                     className="volume-slider"
-                    {...({ orient: "vertical" } as any)}
+                    orient="vertical"
                   />
                 </div>
                 <button onClick={toggleMute}>

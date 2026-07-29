@@ -118,7 +118,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
                   value={volume} 
                   onChange={handleVolumeChange}
                   className="volume-slider"
-                  {...({ orient: "vertical" } as any)}
+                  orient="vertical"
                 />
               </div>
               <button className="modal-mute-button" onClick={toggleMute}>
