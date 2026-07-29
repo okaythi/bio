@@ -1,10 +1,28 @@
-:root {
+:root, [data-theme="dark"] {
   --background: #141414;
   --foreground: #e5e5e5;
   --accent: #E50914;
   --text-muted: #808080;
   --glass: rgba(0, 0, 0, 0.7);
+  --card-bg: #1f1f1f;
+  --modal-bg: #181818;
+  --nav-bg: #141414;
+  --hero-gradient: linear-gradient(to right, #141414 0%, transparent 50%), linear-gradient(to top, #141414 0%, transparent 50%);
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+[data-theme="light"] {
+  --background: #f4f4f6;
+  --foreground: #111111;
+  --accent: #E50914;
+  --text-muted: #555555;
+  --glass: rgba(255, 255, 255, 0.85);
+  --card-bg: #ffffff;
+  --modal-bg: #ffffff;
+  --nav-bg: #ffffff;
+  --hero-gradient: linear-gradient(to right, #f4f4f6 0%, transparent 50%), linear-gradient(to top, #f4f4f6 0%, transparent 50%);
   color: var(--foreground);
   background-color: var(--background);
 }
@@ -17,7 +35,11 @@
 
 body {
   overflow-x: hidden;
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
 
 .home-container {
   min-height: 100vh;
@@ -39,7 +61,7 @@ body {
 }
 
 .nav-container.scrolled {
-  background-color: #141414;
+  background-color: var(--nav-bg);
 }
 
 .nav-left {
@@ -67,7 +89,7 @@ body {
 }
 
 .nav-links a:hover, .nav-links a.active {
-  color: #fff;
+  color: var(--accent);
   font-weight: bold;
 }
 
@@ -79,7 +101,7 @@ body {
 
 .nav-icon {
   cursor: pointer;
-  color: white;
+  color: var(--foreground);
 }
 
 .hero-billboard {
@@ -97,8 +119,7 @@ body {
 .hero-vignette {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to right, #141414 0%, transparent 50%),
-              linear-gradient(to top, #141414 0%, transparent 50%);
+  background: var(--hero-gradient);
 }
 
 .hero-content {
@@ -106,6 +127,7 @@ body {
   top: 30%;
   left: 4%;
   width: 40%;
+  color: var(--foreground);
 }
 
 .hero-title {
@@ -129,9 +151,10 @@ body {
 
 .row-header {
   font-size: 1.4vw;
-  color: #e5e5e5;
+  color: var(--foreground);
   margin-bottom: 0.5em;
 }
+
 
 .carousel-container {
   overflow-x: scroll;

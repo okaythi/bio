@@ -98,8 +98,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Sync theme preference to DOM dataset
   useEffect(() => {
     const theme = user?.preferences?.theme || 'dark';
-    document.documentElement.setAttribute('data-theme', theme);
+    let appliedTheme = theme;
+    if (theme === 'system') {
+      appliedTheme = window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+    }
+    document.documentElement.setAttribute('data-theme', appliedTheme);
   }, [user?.preferences?.theme]);
+
 
   const login = async (email: string, password: string) => {
     const res = await fetch('/api/auth/login', {

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, User as UserIcon, X, FlaskConical } from 'lucide-react';
+import { Search, User as UserIcon, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 
@@ -21,6 +21,10 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const isBetaUser = Boolean(
+    user && (experiments.includes('public_beta_v1') || experiments.includes('beta_user'))
+  );
 
   return (
     <>
@@ -56,19 +60,16 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             <Search className="nav-icon" />
           )}
 
-          {/* Active Experiment Badge Indicator if active */}
-          {experiments.length > 0 && (
+          {/* Non-clickable BETA badge shown ONLY to logged-in beta users */}
+          {isBetaUser && (
             <div 
-              title={`Active Experiments: ${experiments.join(', ')}`}
-              onClick={() => setIsAuthModalOpen(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: 'rgba(229,9,20,0.15)',
                 border: '1px solid rgba(229,9,20,0.4)', borderRadius: '12px', padding: '2px 8px', fontSize: '0.75rem',
-                color: '#ff6b6b', cursor: 'pointer'
+                color: '#ff6b6b', fontWeight: 600, pointerEvents: 'none', userSelect: 'none'
               }}
             >
-              <FlaskConical size={13} />
-              <span>EXP ({experiments.length})</span>
+              <span>BETA</span>
             </div>
           )}
 

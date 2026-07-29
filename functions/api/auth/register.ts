@@ -17,6 +17,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
     const body = (await context.request.json()) as RegisterRequestBody;
     const { email, password, displayName } = body || {};
@@ -56,7 +60,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-
     const cleanEmail = email.trim().toLowerCase();
     const { hash, salt } = await hashPassword(password);
     const userId = crypto.randomUUID();
@@ -85,6 +88,12 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     await context.env.DB.prepare(
       "INSERT INTO notification_preferences (user_id) VALUES (?)"
     ).bind(userId).run();
+
+    // 6. Initialize default experiment bucket (public_beta_v1)
+    const defaultExpJson = JSON.stringify({ EXPERIMENTS: ["public_beta_v1"], created_at: new Date().toISOString() });
+    await context.env.DB.prepare(
+      "INSERT INTO user_metadata_ext (user_id, namespace, data_json) VALUES (?, 'experiments', ?)"
+    ).bind(userId, defaultExpJson).run();
 
     return new Response(JSON.stringify({ success: true, userId, email: cleanEmail }), {
       status: 201,
