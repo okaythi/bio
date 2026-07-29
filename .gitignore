@@ -29,3 +29,12 @@ movies/
 cdn.bio.sudothy.me/movies
 cdn.bio.sudothy.me/
 upload.js
+
+# Antigravity/Agent Configs
+.gemini/
+cors.json
+
+# Environment and Cache
+.env
+.env.*
+.wrangler/

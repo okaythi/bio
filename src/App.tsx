@@ -1,40 +1,26 @@
-import { useState, useEffect } from 'react';
-import './App.css';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Home from './pages/Home';
+import Watch from './pages/Watch';
 
-function App() {
-  const [cookieConsent, setCookieConsent] = useState(false);
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      staleTime: 1000 * 60 * 60,
+    },
+  },
+});
 
-  useEffect(() => {
-    const consent = localStorage.getItem('gdpr_cookie_consent');
-    if (consent === 'true') {
-      setCookieConsent(true);
-    }
-  }, []);
-
-  const acceptCookies = () => {
-    localStorage.setItem('gdpr_cookie_consent', 'true');
-    setCookieConsent(true);
-  };
-
+export default function App() {
   return (
-    <div className="app-container">
-      <main className="coming-soon-content">
-        <h1 className="title">Bio</h1>
-        <p className="subtitle">Coming Soon</p>
-      </main>
-      
-      {!cookieConsent && (
-        <div className="cookie-banner">
-          <p className="cookie-text">
-            We use cookies to improve your experience and analyze site usage. By continuing, you agree to our privacy policy.
-          </p>
-          <button onClick={acceptCookies} className="cookie-button">
-            Accept
-          </button>
-        </div>
-      )}
-    </div>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/watch/:id" element={<Watch />} />
+        </Routes>
+      </BrowserRouter>
+    </QueryClientProvider>
   );
 }
-
-export default App;

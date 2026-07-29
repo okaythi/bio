@@ -1,0 +1,164 @@
+import { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Play, X, Plus, ThumbsUp, Volume2, VolumeX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import YouTube from 'react-youtube';
+import type { YouTubePlayer } from 'react-youtube';
+import type { TMDBMovie } from '../services/tmdb';
+import type { MovieMetadata } from '../config/library';
+
+interface TrailerModalProps {
+  movie: TMDBMovie | null;
+  metadata: MovieMetadata | null;
+  trailerKey?: string;
+  onClose: () => void;
+}
+
+export default function TrailerModal({ movie, metadata, trailerKey, onClose }: TrailerModalProps) {
+  const navigate = useNavigate();
+  const [isMuted, setIsMuted] = useState(true);
+  const [volume, setVolume] = useState(0); // 0 to 100
+  const playerRef = useRef<YouTubePlayer | null>(null);
+
+  const onReady = (event: { target: YouTubePlayer }) => {
+    playerRef.current = event.target;
+    event.target.mute();
+    setVolume(0);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseInt(e.target.value, 10);
+    setVolume(val);
+    if (playerRef.current) {
+      playerRef.current.setVolume(val);
+      if (val === 0) {
+        playerRef.current.mute();
+        setIsMuted(true);
+      } else {
+        playerRef.current.unMute();
+        setIsMuted(false);
+      }
+    }
+  };
+
+  const toggleMute = () => {
+    if (playerRef.current) {
+      if (isMuted) {
+        playerRef.current.unMute();
+        const newVol = volume === 0 ? 50 : volume; // default to 50 if it was 0
+        playerRef.current.setVolume(newVol);
+        setVolume(newVol);
+        setIsMuted(false);
+      } else {
+        playerRef.current.mute();
+        setVolume(0);
+        setIsMuted(true);
+      }
+    }
+  };
+
+  if (!movie || !metadata) return null;
+
+  return (
+    <AnimatePresence>
+      <motion.div 
+        className="modal-overlay"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div 
+          className="modal-content"
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.8, opacity: 0 }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button className="modal-close" onClick={onClose}>
+            <X size={24} color="white" />
+          </button>
+          
+          <div className="modal-banner">
+            {trailerKey ? (
+              <div className="modal-trailer-wrapper">
+                <YouTube
+                  videoId={trailerKey}
+                  className="modal-trailer"
+                  opts={{
+                    width: '100%',
+                    height: '100%',
+                    playerVars: {
+                      autoplay: 1,
+                      controls: 0,
+                      disablekb: 1,
+                      loop: 1,
+                      playlist: trailerKey,
+                      modestbranding: 1,
+                      showinfo: 0,
+                      rel: 0,
+                      iv_load_policy: 3
+                    }
+                  }}
+                  onReady={onReady}
+                />
+              </div>
+            ) : (
+              <img 
+                src={`https://image.tmdb.org/t/p/original${movie.backdrop_path}`} 
+                alt={movie.title}
+                className="modal-backdrop"
+              />
+            )}
+            <div className="modal-banner-fade"></div>
+            
+            <div className="modal-volume-container">
+              <div className="volume-slider-wrapper">
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  value={volume} 
+                  onChange={handleVolumeChange}
+                  className="volume-slider"
+                  {...({ orient: "vertical" } as any)}
+                />
+              </div>
+              <button className="modal-mute-button" onClick={toggleMute}>
+                {isMuted ? <VolumeX size={20} color="white" /> : <Volume2 size={20} color="white" />}
+              </button>
+            </div>
+
+            <div className="modal-actions">
+              <button className="play-button" onClick={() => navigate(`/watch/${metadata.id}`)}>
+                <Play size={24} fill="black" color="black" />
+                <span>Play</span>
+              </button>
+              <button className="icon-button"><Plus size={24} /></button>
+              <button className="icon-button"><ThumbsUp size={24} /></button>
+            </div>
+          </div>
+          
+          <div className="modal-details">
+            <div className="modal-info-left">
+              <div className="modal-meta">
+                <span className="match">98% Match</span>
+                <span>{movie.release_date.split('-')[0]}</span>
+                {movie.runtime && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>}
+                <span className="hd">HD</span>
+              </div>
+              <p className="modal-overview">{movie.overview}</p>
+            </div>
+            <div className="modal-info-right">
+              {movie.genres && (
+                <div className="modal-genres">
+                  <span>Genres:</span> {movie.genres.map(g => g.name).join(', ')}
+                </div>
+              )}
+            </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
+  );
+}
