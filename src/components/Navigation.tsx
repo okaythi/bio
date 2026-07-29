@@ -9,10 +9,27 @@ interface NavigationProps {
   onSearchChange?: (query: string) => void;
 }
 
+const StaffRedBadge = () => (
+  <div 
+    title="Bio Staff Member" 
+    style={{
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backgroundColor: 'rgba(229, 9, 20, 0.2)', border: '1px solid rgba(229, 9, 20, 0.7)',
+      borderRadius: '50%', padding: '6px', cursor: 'default',
+      boxShadow: '0 0 12px rgba(229, 9, 20, 0.4)'
+    }}
+  >
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="#E50914" stroke="#E50914" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+      <polygon points="12 8 13.09 10.26 15.6 10.63 13.78 12.4 14.21 14.9 12 13.74 9.79 14.9 10.22 12.4 8.4 10.63 10.91 10.26 12 8" fill="#ffffff" stroke="none" />
+    </svg>
+  </div>
+);
+
 export default function Navigation({ searchQuery, onSearchChange }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, experiments } = useAuth();
+  const { user, experiments, isStaff } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -60,7 +77,7 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             <Search className="nav-icon" />
           )}
 
-          {/* Non-clickable BETA badge shown ONLY to logged-in beta users */}
+          {/* 1. BETA badge goes to the LEFT of the Staff red SVG */}
           {isBetaUser && (
             <div 
               style={{
@@ -73,7 +90,10 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             </div>
           )}
 
-          {/* User Profile / Account Button */}
+          {/* 2. Staff Red SVG icon placed directly to the LEFT of the User Avatar PFP */}
+          {user && isStaff && <StaffRedBadge />}
+
+          {/* 3. User Profile / Account Button */}
           <button 
             onClick={() => setIsAuthModalOpen(true)}
             style={{

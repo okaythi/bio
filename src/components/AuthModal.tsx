@@ -1,11 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, User as UserIcon, FlaskConical, LogOut } from 'lucide-react';
+import { X, User as UserIcon, FlaskConical, LogOut, Shield, Lock, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+}
+
+interface AdminUser {
+  id: string;
+  email: string;
+  display_name: string | null;
+  flags: string[];
 }
 
 const SYSTEM_BUCKETS = ["public_beta_v1", "beta_user"];
@@ -17,11 +24,15 @@ const ALLOWED_EXPERIMENT_BUCKETS = [
   "4k_player_beta",
   "ai_subtitles_v1"
 ];
+const KNOWN_FLAGS = ["is_staff", "edit_flags", "vip", "moderator"];
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { user, login, register, logout, updateProfile, updatePreferences, experiments, updateExperiments } = useAuth();
+  const { 
+    user, login, register, logout, updateProfile, updatePreferences, 
+    experiments, updateExperiments, isStaff, canEditFlags, flags: userFlags, updateUserFlags 
+  } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'auth' | 'profile' | 'preferences' | 'experiments'>('auth');
+  const [activeTab, setActiveTab] = useState<'auth' | 'profile' | 'preferences' | 'experiments' | 'staff'>('auth');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,9 +44,45 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [expInput, setExpInput] = useState('');
   const [expList, setExpList] = useState<string[]>(experiments);
 
+  // Staff DevTools state
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [userSearch, setUserSearch] = useState('');
+  const [targetFlags, setTargetFlags] = useState<string[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    setExpList(experiments);
+  }, [experiments]);
+
+  useEffect(() => {
+    if (user && isStaff && activeTab === 'staff') {
+      fetchAdminUsers();
+    }
+  }, [activeTab, isStaff, user]);
+
+  const fetchAdminUsers = async () => {
+    setLoadingUsers(true);
+    try {
+      const res = await fetch('/api/admin/users');
+      if (res.ok) {
+        const data = await res.json();
+        setAdminUsers(data.users || []);
+        if (data.users && data.users.length > 0 && !selectedUser) {
+          const self = data.users.find((u: AdminUser) => u.id === user?.id) || data.users[0];
+          setSelectedUser(self);
+          setTargetFlags(self.flags || []);
+        }
+      }
+    } catch (e) {
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -106,7 +153,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   const handleRemoveExperiment = (exp: string) => {
-    if (SYSTEM_BUCKETS.includes(exp)) {
+    // Staff members can remove beta experiments if they wish! Non-staff cannot remove system buckets.
+    if (!isStaff && SYSTEM_BUCKETS.includes(exp)) {
       setError(`System bucket "${exp}" cannot be removed.`);
       return;
     }
@@ -127,6 +175,46 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
+  const handleSelectUser = (u: AdminUser) => {
+    setSelectedUser(u);
+    setTargetFlags(u.flags || []);
+    setError(null);
+    setSuccess(null);
+  };
+
+  const handleToggleFlag = (flagName: string) => {
+    if (!selectedUser) return;
+    const isSelf = selectedUser.id === user?.id;
+    // Self-protection check
+    if (isSelf && (flagName === 'is_staff' || flagName === 'edit_flags')) {
+      setError(`Security Protection: You cannot remove your own '${flagName}' permission.`);
+      return;
+    }
+    setError(null);
+    setTargetFlags(prev => prev.includes(flagName) ? prev.filter(f => f !== flagName) : [...prev, flagName]);
+  };
+
+  const handleSaveFlags = async () => {
+    if (!selectedUser) return;
+    setError(null);
+    setSuccess(null);
+    setLoading(true);
+    try {
+      await updateUserFlags(selectedUser.id, targetFlags);
+      setSuccess(`Flags updated for ${selectedUser.email}!`);
+      fetchAdminUsers();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredUsers = adminUsers.filter(u => 
+    u.email.toLowerCase().includes(userSearch.toLowerCase()) || 
+    (u.display_name && u.display_name.toLowerCase().includes(userSearch.toLowerCase()))
+  );
+
   return (
     <motion.div 
       className="modal-overlay"
@@ -143,8 +231,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         exit={{ scale: 0.9, opacity: 0 }}
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: '520px',
-          width: '90%',
+          maxWidth: '580px',
+          width: '92%',
           backgroundColor: 'var(--modal-bg)',
           borderRadius: '12px',
           padding: '28px',
@@ -167,7 +255,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         {/* Tab Navigation if Logged In */}
         {user && (
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', flexWrap: 'wrap' }}>
             <button 
               onClick={() => { setActiveTab('auth'); setError(null); }}
               style={{
@@ -205,6 +293,18 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             >
               <FlaskConical size={14} /> Experiments
             </button>
+            {isStaff && (
+              <button 
+                onClick={() => { setActiveTab('staff'); setError(null); }}
+                style={{
+                  background: activeTab === 'staff' ? '#E50914' : 'rgba(229,9,20,0.15)',
+                  border: '1px solid #E50914', color: '#ff6b6b', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem',
+                  display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600
+                }}
+              >
+                <Shield size={14} color="#ff6b6b" /> Staff DevTools
+              </button>
+            )}
           </div>
         )}
 
@@ -241,6 +341,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </div>
                   </div>
                 </div>
+
+                {userFlags.length > 0 && (
+                  <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '6px' }}>Account Flags</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {userFlags.map(f => (
+                        <span key={f} style={{ backgroundColor: 'rgba(229,9,20,0.2)', border: '1px solid #E50914', color: '#ff6b6b', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
+                          {f}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <button 
                   onClick={logout}
                   style={{
@@ -402,6 +516,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {expList.map((exp) => {
                   const isSystemBucket = SYSTEM_BUCKETS.includes(exp);
+                  const canRemove = isStaff || !isSystemBucket;
                   return (
                     <span 
                       key={exp} 
@@ -412,7 +527,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       }}
                     >
                       {exp} {isSystemBucket && <span style={{ fontSize: '0.65rem', color: '#ff6b6b' }}>(System)</span>}
-                      {!isSystemBucket && (
+                      {canRemove && (
                         <X size={12} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => handleRemoveExperiment(exp)} />
                       )}
                     </span>
@@ -448,6 +563,114 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             >
               Save Experiment Buckets
             </button>
+          </div>
+        )}
+
+        {/* Tab 5: Staff DevTools & Flag Management */}
+        {user && isStaff && activeTab === 'staff' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ padding: '10px', backgroundColor: 'rgba(229,9,20,0.15)', border: '1px solid rgba(229,9,20,0.4)', borderRadius: '6px', color: '#ff6b6b', fontSize: '0.8rem' }}>
+              <strong>Bio Staff DevTools & Permission Flag Management</strong><br />
+              Staff members can toggle experiment treatments and grant permissions (`is_staff`, `edit_flags`).
+            </div>
+
+            {canEditFlags ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#fff' }}>User Permission Flags Editor</div>
+                
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <Search size={16} color="#888" />
+                  <input 
+                    type="text" 
+                    placeholder="Search accounts by email..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                {loadingUsers ? (
+                  <div style={{ fontSize: '0.85rem', color: '#888' }}>Loading accounts...</div>
+                ) : (
+                  <div style={{ display: 'flex', gap: '12px', minHeight: '180px' }}>
+                    {/* User List */}
+                    <div style={{ width: '45%', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '10px', overflowY: 'auto', maxHeight: '200px' }}>
+                      {filteredUsers.map(u => {
+                        const isSelected = selectedUser?.id === u.id;
+                        const isCurrent = u.id === user.id;
+                        return (
+                          <div 
+                            key={u.id}
+                            onClick={() => handleSelectUser(u)}
+                            style={{
+                              padding: '8px', borderRadius: '6px', cursor: 'pointer', marginBottom: '4px',
+                              backgroundColor: isSelected ? '#E50914' : 'rgba(255,255,255,0.05)',
+                              fontSize: '0.8rem', color: '#fff', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                            }}
+                          >
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {u.display_name || u.email} {isCurrent && '(You)'}
+                            </span>
+                            {u.flags.includes('is_staff') && <Shield size={12} color="#fff" />}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Flags Checkboxes for Selected User */}
+                    {selectedUser && (
+                      <div style={{ flex: 1, paddingLeft: '6px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e5e5e5' }}>
+                          Flags for {selectedUser.email}
+                        </div>
+
+                        {KNOWN_FLAGS.map(flag => {
+                          const isSelf = selectedUser.id === user.id;
+                          const isProtectedSelfFlag = isSelf && (flag === 'is_staff' || flag === 'edit_flags');
+                          const isChecked = targetFlags.includes(flag);
+
+                          return (
+                            <label 
+                              key={flag} 
+                              style={{ 
+                                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                fontSize: '0.8rem', cursor: isProtectedSelfFlag ? 'not-allowed' : 'pointer',
+                                padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px',
+                                opacity: isProtectedSelfFlag ? 0.65 : 1
+                              }}
+                              title={isProtectedSelfFlag ? "Security Rule: You cannot remove your own Staff or Edit Flags permission" : ""}
+                            >
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                {flag} {isProtectedSelfFlag && <Lock size={12} color="#ff6b6b" />}
+                              </span>
+                              <input 
+                                type="checkbox" 
+                                checked={isChecked} 
+                                disabled={isProtectedSelfFlag}
+                                onChange={() => handleToggleFlag(flag)}
+                                style={{ accentColor: '#E50914' }}
+                              />
+                            </label>
+                          );
+                        })}
+
+                        <button 
+                          onClick={handleSaveFlags}
+                          disabled={loading}
+                          style={{ backgroundColor: '#E50914', color: '#fff', border: 'none', padding: '8px', borderRadius: '6px', fontWeight: 600, cursor: 'pointer', marginTop: 'auto', fontSize: '0.8rem' }}
+                        >
+                          Save User Flags
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.85rem', color: '#aaa' }}>
+                You have Staff viewing privileges. Flag modification requires the <code>edit_flags</code> permission flag.
+              </div>
+            )}
           </div>
         )}
       </motion.div>
