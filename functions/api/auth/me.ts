@@ -59,7 +59,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       } catch (e) {}
     }
 
-    // Owner check: mathyschepers@proton.me or thy
     const lowerEmail = session.email.toLowerCase();
     const lowerName = profile?.display_name?.toLowerCase() || "";
 
@@ -68,7 +67,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       if (!flags.includes("edit_flags")) flags.push("edit_flags");
     }
 
-    // Auto-fallback display_name to 'thy' or email username
     const effectiveProfile = {
       ...profile,
       display_name: profile?.display_name || (lowerEmail.includes("mathyschepers") ? "thy" : session.email.split('@')[0])

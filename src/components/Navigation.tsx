@@ -13,15 +13,21 @@ const StaffRedBadge = () => (
   <div 
     title="Bio Staff Member" 
     style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      backgroundColor: 'rgba(229, 9, 20, 0.2)', border: '1px solid rgba(229, 9, 20, 0.7)',
-      borderRadius: '50%', padding: '6px', cursor: 'default',
-      boxShadow: '0 0 12px rgba(229, 9, 20, 0.4)'
+      width: '32px',
+      height: '32px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(229, 9, 20, 0.15)',
+      border: '1px solid rgba(229, 9, 20, 0.5)',
+      borderRadius: '6px',
+      boxShadow: '0 0 10px rgba(229, 9, 20, 0.3)',
+      flexShrink: 0,
+      cursor: 'default'
     }}
   >
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="#E50914" stroke="#E50914" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-      <polygon points="12 8 13.09 10.26 15.6 10.63 13.78 12.4 14.21 14.9 12 13.74 9.79 14.9 10.22 12.4 8.4 10.63 10.91 10.26 12 8" fill="#ffffff" stroke="none" />
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#E50914" style={{ display: 'block', margin: '0 auto' }}>
+      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.5L3.5 6.5V12C3.5 17.25 7.15 22.1 12 23.5C16.85 22.1 20.5 17.25 20.5 12V6.5L12 2.5ZM12 6.8L13.8 10.5L17.9 11.1L14.9 14L15.6 18.1L12 16.2L8.4 18.1L9.1 14L6.1 11.1L10.2 10.5L12 6.8Z" />
     </svg>
   </div>
 );
@@ -77,7 +83,6 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             <Search className="nav-icon" />
           )}
 
-          {/* 1. BETA badge goes to the LEFT of the Staff red SVG */}
           {isBetaUser && (
             <div 
               style={{
@@ -90,10 +95,8 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             </div>
           )}
 
-          {/* 2. Staff Red SVG icon placed directly to the LEFT of the User Avatar PFP */}
           {user && isStaff && <StaffRedBadge />}
 
-          {/* 3. User Profile / Account Button */}
           <button 
             onClick={() => setIsAuthModalOpen(true)}
             style={{

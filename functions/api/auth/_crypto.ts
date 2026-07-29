@@ -1,11 +1,3 @@
-// functions/api/auth/_crypto.ts
-
-/**
- * Password Hashing & Verification using Web Crypto API (PBKDF2-SHA256)
- * Salt: A unique per-user random cryptographic string added to the password
- * before hashing to prevent rainbow table attacks and hash collisions.
- */
-
 export async function hashPassword(password: string, saltHex?: string): Promise<{ hash: string; salt: string }> {
   const enc = new TextEncoder();
   const salt = saltHex 
