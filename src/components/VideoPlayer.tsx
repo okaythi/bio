@@ -7,6 +7,13 @@ interface VideoPlayerProps {
   metadata: MovieMetadata;
 }
 
+const LANG_LABELS: Record<string, string> = {
+  en: 'English',
+  fr: 'Français',
+  nl: 'Nederlands',
+  'pt-BR': 'Português (BR)',
+};
+
 const formatTime = (seconds: number) => {
   if (isNaN(seconds)) return "00:00";
   const h = Math.floor(seconds / 3600);
@@ -23,6 +30,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const langMenuRef = useRef<HTMLDivElement>(null);
   
   const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -32,9 +40,11 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [isBuffering, setIsBuffering] = useState(true);
   const [progress, setProgress] = useState(0);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
-  const [ccEnabled, setCcEnabled] = useState(false);
-  const [vttUrl, setVttUrl] = useState<string | null>(null);
   const [videoError, setVideoError] = useState<string | null>(null);
+
+  const [selectedLang, setSelectedLang] = useState<string | null>(null);
+  const [vttUrls, setVttUrls] = useState<Map<string, string>>(new Map());
+  const [showLangMenu, setShowLangMenu] = useState(false);
 
   // Thumbnail states
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
@@ -43,10 +53,11 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   const timeoutRef = useRef<number | null>(null);
   const hasSeekedRef = useRef(false);
+  
   // Refs mirror mutable state for stable event handlers (avoids stale closures — BUG-007)
   const isMutedRef = useRef(false);
   const volumeRef = useRef(100);
-  const ccEnabledRef = useRef(false);
+  const selectedLangRef = useRef<string | null>(null);
 
   const handleCanPlay = () => {
     setIsBuffering(false);
@@ -64,7 +75,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
-  useEffect(() => { ccEnabledRef.current = ccEnabled; }, [ccEnabled]);
+  useEffect(() => { selectedLangRef.current = selectedLang; }, [selectedLang]);
 
   useEffect(() => {
     const isPC = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -74,7 +85,10 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       setShowControls(true);
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
       timeoutRef.current = window.setTimeout(() => {
-        if (isPlaying) setShowControls(false);
+        if (isPlaying) {
+          setShowControls(false);
+          setShowLangMenu(false);
+        }
       }, timeoutDuration);
     };
 
@@ -113,11 +127,17 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
           }
         }
       } else if (e.code === 'KeyC') {
-        if (videoRef.current && videoRef.current.textTracks[0]) {
-          const track = videoRef.current.textTracks[0];
-          const newState = !ccEnabledRef.current;
-          track.mode = newState ? 'showing' : 'hidden';
-          setCcEnabled(newState);
+        if (metadata.subtitles && metadata.subtitles.length > 0) {
+          const langs = metadata.subtitles.map(s => s.lang);
+          const currentLang = selectedLangRef.current;
+          const currentIndex = currentLang ? langs.indexOf(currentLang) : -1;
+          const nextIndex = currentIndex + 1;
+          
+          if (nextIndex < langs.length) {
+            setSelectedLang(langs[nextIndex]);
+          } else {
+            setSelectedLang(null);
+          }
         }
       } else if (e.code === 'ArrowRight') {
         if (videoRef.current) videoRef.current.currentTime += 10;
@@ -127,28 +147,56 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []); // stable: stale-prone state is read via refs
+  }, [metadata.subtitles]); 
 
   useEffect(() => {
-    let url = "";
-    if (metadata.subtitleUrl) {
-      fetch(metadata.subtitleUrl)
-        .then(r => r.ok ? r.text() : null)
-        .then(srtText => {
-          if (!srtText) return; // subtitle file missing or non-OK response (BUG-001)
-          const vttText = "WEBVTT\n\n" + srtText
-            .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2")
-            .replace(/(-->\s+\d{2}:\d{2}:\d{2}\.\d{3})/g, "$1 line:85%"); // \s+ handles varying SRT spacing (BUG-005)
-          const blob = new Blob([vttText], { type: "text/vtt" });
-          url = URL.createObjectURL(blob);
-          setVttUrl(url);
-        })
-        .catch(console.error);
+    const urls = new Map<string, string>();
+    const promises: Promise<void>[] = [];
+
+    if (metadata.subtitles && metadata.subtitles.length > 0) {
+      metadata.subtitles.forEach(sub => {
+        const p = fetch(sub.url)
+          .then(r => r.ok ? r.text() : null)
+          .then(srtText => {
+            if (!srtText) return;
+            const vttText = "WEBVTT\n\n" + srtText
+              .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2")
+              .replace(/(-->\s+\d{2}:\d{2}:\d{2}\.\d{3})/g, "$1 line:85%"); 
+            const blob = new Blob([vttText], { type: "text/vtt" });
+            const url = URL.createObjectURL(blob);
+            urls.set(sub.lang, url);
+          })
+          .catch(console.error);
+        promises.push(p);
+      });
     }
+
+    Promise.all(promises).then(() => {
+      setVttUrls(new Map(urls));
+    });
+
     return () => {
-      if (url) URL.revokeObjectURL(url);
+      urls.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [metadata.subtitleUrl]);
+  }, [metadata.subtitles]);
+
+  useEffect(() => {
+    if (!videoRef.current) return;
+    for (let i = 0; i < videoRef.current.textTracks.length; i++) {
+      const track = videoRef.current.textTracks[i];
+      track.mode = track.language === selectedLang ? 'showing' : 'hidden';
+    }
+  }, [selectedLang, vttUrls]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
+        setShowLangMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const togglePlay = () => {
     if (videoRef.current) {
@@ -201,13 +249,14 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     }
   };
 
-  const toggleCC = () => {
-    if (videoRef.current && videoRef.current.textTracks[0]) {
-      const track = videoRef.current.textTracks[0];
-      const newState = !ccEnabled;
-      track.mode = newState ? 'showing' : 'hidden';
-      setCcEnabled(newState);
-    }
+  const toggleLangMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowLangMenu(prev => !prev);
+  };
+
+  const selectLanguage = (lang: string | null) => {
+    setSelectedLang(lang);
+    setShowLangMenu(false);
   };
 
   const handleTimeUpdate = () => {
@@ -303,15 +352,15 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         onClick={togglePlay}
         onDoubleClick={toggleFullscreen}
       >
-        {vttUrl && (
+        {Array.from(vttUrls.entries()).map(([lang, url]) => (
           <track
+            key={lang}
             kind="subtitles"
-            src={vttUrl}
-            srcLang="en"
-            label="English"
-            default={ccEnabled}
+            src={url}
+            srcLang={lang}
+            label={LANG_LABELS[lang] || lang}
           />
-        )}
+        ))}
       </video>
 
       {/* Hidden video purely for rendering scrubbing thumbnails */}
@@ -409,13 +458,34 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
             </div>
             
             <div className="controls-right">
-              {vttUrl && (
-                <button 
-                  onClick={toggleCC} 
-                  className={`cc-button ${ccEnabled ? 'active' : ''}`}
-                >
-                  <Subtitles size={28} color={ccEnabled ? 'white' : 'rgba(255,255,255,0.6)'} />
-                </button>
+              {vttUrls.size > 0 && (
+                <div className="cc-menu-container" ref={langMenuRef}>
+                  {showLangMenu && (
+                    <div className="cc-dropdown">
+                      <button 
+                        className={selectedLang === null ? 'lang-active' : ''}
+                        onClick={(e) => { e.stopPropagation(); selectLanguage(null); }}
+                      >
+                        Off
+                      </button>
+                      {metadata.subtitles?.map(sub => (
+                        <button
+                          key={sub.lang}
+                          className={selectedLang === sub.lang ? 'lang-active' : ''}
+                          onClick={(e) => { e.stopPropagation(); selectLanguage(sub.lang); }}
+                        >
+                          {LANG_LABELS[sub.lang] || sub.lang}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button 
+                    onClick={toggleLangMenu} 
+                    className={`cc-button ${selectedLang !== null ? 'active' : ''}`}
+                  >
+                    <Subtitles size={28} color={selectedLang !== null ? 'white' : 'rgba(255,255,255,0.6)'} />
+                  </button>
+                </div>
               )}
               <button onClick={toggleFullscreen}>
                 <Maximize size={28} color="white" />

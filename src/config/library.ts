@@ -3,7 +3,7 @@ const R2_CDN = "https://cdn.bio.sudothy.me";
 export interface MovieMetadata {
   id: string;
   videoUrl: string;
-  subtitleUrl?: string;
+  subtitles?: { lang: string; url: string }[];
   title: string;
   year?: string;
   tmdbId?: number;
@@ -22,7 +22,7 @@ export const fetchLibrary = async (): Promise<MovieMetadata[]> => {
     return [{
       id: "Leviticus (2026)",
       videoUrl: `${R2_CDN}/${encodeURIComponent("Leviticus (2026)")}/${encodeURIComponent("Leviticus (1080p - 5.1).mp4")}`,
-      subtitleUrl: `${R2_CDN}/${encodeURIComponent("Leviticus (2026)")}/${encodeURIComponent("Leviticus (1080p - 5.1).srt")}`,
+      subtitles: [{ lang: 'en', url: `${R2_CDN}/${encodeURIComponent("Leviticus (2026)")}/${encodeURIComponent("Leviticus (1080p - 5.1).srt")}` }],
       title: "Leviticus",
       year: "2026",
       hasIntro: false
