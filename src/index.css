@@ -68,7 +68,6 @@ body {
   display: flex;
   align-items: center;
   gap: 36px;
-  height: 100%;
 }
 
 .nav-logo {
@@ -76,16 +75,16 @@ body {
   font-size: 26px;
   font-weight: 800;
   letter-spacing: -0.5px;
-  display: flex;
-  align-items: center;
   line-height: 1;
+  margin: 0;
+  padding: 0;
 }
 
 .nav-links {
   display: flex;
   align-items: center;
   gap: 20px;
-  height: 100%;
+  margin-top: 2px;
 }
 
 .nav-links a {
@@ -94,10 +93,12 @@ body {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  display: flex;
-  align-items: center;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
   transition: opacity 0.2s ease, color 0.2s ease;
 }
+
 
 .nav-links a:hover {
   opacity: 0.65;
