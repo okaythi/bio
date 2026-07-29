@@ -28,7 +28,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
-  // Verify caller user & permissions
   const caller = await context.env.DB.prepare(`
     SELECT users.id, users.email 
     FROM sessions 
@@ -51,15 +50,16 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       if (Array.isArray(parsed.flags)) callerFlags = parsed.flags;
     } catch (e) {}
   }
-  if (caller.email.toLowerCase().includes("thy")) {
-    callerFlags.push("is_staff", "edit_flags");
+  const lowerCallerEmail = caller.email.toLowerCase();
+  if (lowerCallerEmail.includes("thy") || lowerCallerEmail.includes("mathyschepers")) {
+    if (!callerFlags.includes("is_staff")) callerFlags.push("is_staff");
+    if (!callerFlags.includes("edit_flags")) callerFlags.push("edit_flags");
   }
 
   if (!callerFlags.includes("is_staff") && !callerFlags.includes("edit_flags")) {
     return new Response(JSON.stringify({ error: "Forbidden: Staff access required" }), { status: 403, headers: corsHeaders });
   }
 
-  // Fetch all users with profiles
   const { results: users } = await context.env.DB.prepare(`
     SELECT users.id, users.email, user_profiles.display_name
     FROM users
@@ -67,7 +67,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     LIMIT 100
   `).all<{ id: string; email: string; display_name: string | null }>();
 
-  // Fetch flags for each user
   const userList: UserListItem[] = [];
   for (const u of (users || [])) {
     const userFlagsRow = await context.env.DB.prepare(
@@ -82,7 +81,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       } catch (e) {}
     }
 
-    if (u.email.toLowerCase().includes("thy")) {
+    const lowerUEmail = u.email.toLowerCase();
+    if (lowerUEmail.includes("thy") || lowerUEmail.includes("mathyschepers")) {
       if (!uFlags.includes("is_staff")) uFlags.push("is_staff");
       if (!uFlags.includes("edit_flags")) uFlags.push("edit_flags");
     }
@@ -90,7 +90,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     userList.push({
       id: u.id,
       email: u.email,
-      display_name: u.display_name,
+      display_name: u.display_name || (lowerUEmail.includes("mathyschepers") ? "thy" : u.email.split('@')[0]),
       flags: uFlags
     });
   }
