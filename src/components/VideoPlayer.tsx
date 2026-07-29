@@ -193,6 +193,11 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       const total = videoRef.current.duration;
       setProgress((current / total) * 100);
 
+      if (!isNaN(total) && total > 0) {
+        const pct = (current / total) * 100;
+        localStorage.setItem(`bio-progress-${metadata.id}`, pct.toString());
+      }
+
       if (metadata.hasIntro && metadata.introStart && metadata.introEnd) {
         if (current >= metadata.introStart && current <= metadata.introEnd) {
           setShowSkipIntro(true);

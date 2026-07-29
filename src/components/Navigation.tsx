@@ -19,8 +19,6 @@ export default function Navigation() {
         <span className="nav-logo">bio</span>
         <div className="nav-links">
           <Link to="/" className="active">Home</Link>
-          <a href="#" onClick={(e) => e.preventDefault()}>Movies</a>
-          <a href="#" onClick={(e) => e.preventDefault()}>My List</a>
         </div>
       </div>
       <div className="nav-right">
