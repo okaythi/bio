@@ -42,10 +42,25 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [hoverTime, setHoverTime] = useState(0);
 
   const timeoutRef = useRef<number | null>(null);
+  const hasSeekedRef = useRef(false);
   // Refs mirror mutable state for stable event handlers (avoids stale closures — BUG-007)
   const isMutedRef = useRef(false);
   const volumeRef = useRef(100);
   const ccEnabledRef = useRef(false);
+
+  const handleCanPlay = () => {
+    setIsBuffering(false);
+    if (!hasSeekedRef.current && videoRef.current) {
+      hasSeekedRef.current = true;
+      const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
+      if (savedStr) {
+        const savedPct = parseFloat(savedStr);
+        if (savedPct > 0 && savedPct <= 94.57) {
+          videoRef.current.currentTime = (savedPct / 100) * videoRef.current.duration;
+        }
+      }
+    }
+  };
 
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
@@ -195,7 +210,16 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
       if (!isNaN(total) && total > 0) {
         const pct = (current / total) * 100;
-        localStorage.setItem(`bio-progress-${metadata.id}`, pct.toString());
+        const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
+        const savedPct = savedStr ? parseFloat(savedStr) : 0;
+        
+        if (savedPct > 94.57) {
+          if (pct > 5.13) {
+            localStorage.setItem(`bio-progress-${metadata.id}`, pct.toString());
+          }
+        } else {
+          localStorage.setItem(`bio-progress-${metadata.id}`, pct.toString());
+        }
       }
 
       if (metadata.hasIntro && metadata.introStart && metadata.introEnd) {
@@ -262,7 +286,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         onPause={() => setIsPlaying(false)}
         onWaiting={() => setIsBuffering(true)}
         onPlaying={() => setIsBuffering(false)}
-        onCanPlay={() => setIsBuffering(false)}
+        onCanPlay={handleCanPlay}
         onTimeUpdate={handleTimeUpdate}
         onError={() => {
           setVideoError('This video failed to load. Please go back and try again.');

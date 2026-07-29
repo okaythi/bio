@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { CheckCircle } from 'lucide-react';
 import { getImageUrl } from '../services/tmdb';
 import type { TMDBMovie } from '../services/tmdb';
 import type { MovieMetadata } from '../config/library';
@@ -35,6 +36,11 @@ export default function MovieCard({ movie, metadata, onClick }: MovieCardProps) 
         decoding="async"
         className="movie-poster"
       />
+      {progress !== null && progress > 94.57 && (
+        <div className="movie-card-checkmark">
+          <CheckCircle size={32} color="white" fill="#E50914" />
+        </div>
+      )}
       {progress !== null && progress > 0 && (
         <div className="movie-card-progress-container">
           <div className="movie-card-progress-bar" style={{ width: `${progress}%` }}></div>
