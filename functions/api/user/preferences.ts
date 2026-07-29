@@ -5,10 +5,15 @@ export interface Env {
 interface PreferencesRequestBody {
   theme?: string;
   defaultAudioLang?: string;
+  default_audio_lang?: string;
   defaultSubtitleLang?: string;
+  default_subtitle_lang?: string;
   autoPlayNext?: boolean;
+  auto_play_next?: boolean;
   playerVolume?: number;
+  player_volume?: number;
   uiSettingsJson?: Record<string, unknown>;
+  ui_settings_json?: Record<string, unknown>;
 }
 
 async function getUserIdFromSession(context: EventContext<Env, string, Record<string, unknown>>): Promise<string | null> {
@@ -31,6 +36,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const userId = await getUserIdFromSession(context);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -52,6 +61,10 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const userId = await getUserIdFromSession(context);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -59,21 +72,35 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as PreferencesRequestBody;
-    const { theme, defaultAudioLang, defaultSubtitleLang, autoPlayNext, playerVolume, uiSettingsJson } = body || {};
+    const theme = body.theme ?? null;
+    const defaultAudioLang = body.defaultAudioLang ?? body.default_audio_lang ?? null;
+    const defaultSubtitleLang = body.defaultSubtitleLang ?? body.default_subtitle_lang ?? null;
+    
+    const rawAutoPlay = body.autoPlayNext ?? body.auto_play_next;
+    const autoPlayNext = rawAutoPlay !== undefined ? (rawAutoPlay ? 1 : 0) : null;
+    
+    const playerVolume = body.playerVolume ?? body.player_volume ?? null;
+    const rawUiSettings = body.uiSettingsJson ?? body.ui_settings_json;
+    const uiSettingsJson = rawUiSettings ? JSON.stringify(rawUiSettings) : null;
 
     await context.env.DB.prepare(`
       INSERT INTO user_preferences (user_id, theme, default_audio_lang, default_subtitle_lang, auto_play_next, player_volume, ui_settings_json)
       VALUES (?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
-        theme = COALESCE(?, theme),
-        default_audio_lang = COALESCE(?, default_audio_lang),
-        default_subtitle_lang = COALESCE(?, default_subtitle_lang),
-        auto_play_next = COALESCE(?, auto_play_next),
-        player_volume = COALESCE(?, player_volume),
-        ui_settings_json = COALESCE(?, ui_settings_json)
+        theme = COALESCE(excluded.theme, theme),
+        default_audio_lang = COALESCE(excluded.default_audio_lang, default_audio_lang),
+        default_subtitle_lang = COALESCE(excluded.default_subtitle_lang, default_subtitle_lang),
+        auto_play_next = COALESCE(excluded.auto_play_next, auto_play_next),
+        player_volume = COALESCE(excluded.player_volume, player_volume),
+        ui_settings_json = COALESCE(excluded.ui_settings_json, ui_settings_json)
     `).bind(
-      userId, theme, defaultAudioLang, defaultSubtitleLang, autoPlayNext, playerVolume, uiSettingsJson ? JSON.stringify(uiSettingsJson) : '{}',
-      theme, defaultAudioLang, defaultSubtitleLang, autoPlayNext, playerVolume, uiSettingsJson ? JSON.stringify(uiSettingsJson) : null
+      userId,
+      theme,
+      defaultAudioLang,
+      defaultSubtitleLang,
+      autoPlayNext,
+      playerVolume,
+      uiSettingsJson
     ).run();
 
     return new Response(JSON.stringify({ success: true }), {

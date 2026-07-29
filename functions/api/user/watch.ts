@@ -13,8 +13,11 @@ interface WatchHistoryDbRow {
 
 interface WatchRequestBody {
   movieId?: string;
+  movie_id?: string;
   progressSeconds?: number;
+  progress_seconds?: number;
   durationSeconds?: number;
+  duration_seconds?: number;
   completed?: boolean;
   toggleLike?: boolean;
 }
@@ -38,6 +41,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type"
   };
+
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
 
   const userId = await getUserIdFromSession(context);
   if (!userId) {
@@ -67,6 +74,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const userId = await getUserIdFromSession(context);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -74,7 +85,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as WatchRequestBody;
-    const { movieId, progressSeconds, durationSeconds, completed, toggleLike } = body || {};
+    const movieId = body.movieId ?? body.movie_id;
+    const progressSeconds = body.progressSeconds ?? body.progress_seconds ?? 0;
+    const durationSeconds = body.durationSeconds ?? body.duration_seconds ?? 0;
+    const completed = body.completed ? 1 : 0;
+    const toggleLike = body.toggleLike;
 
     if (!movieId) {
       return new Response(JSON.stringify({ error: "movieId is required" }), { status: 400, headers: corsHeaders });
@@ -95,15 +110,14 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       INSERT INTO user_watch_history (id, user_id, movie_id, progress_seconds, duration_seconds, completed, rating, last_watched_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
-        progress_seconds = COALESCE(?, progress_seconds),
-        duration_seconds = COALESCE(?, duration_seconds),
-        completed = COALESCE(?, completed),
-        rating = ?,
+        progress_seconds = COALESCE(excluded.progress_seconds, progress_seconds),
+        duration_seconds = COALESCE(excluded.duration_seconds, duration_seconds),
+        completed = COALESCE(excluded.completed, completed),
+        rating = excluded.rating,
         watch_count = watch_count + 1,
         last_watched_at = CURRENT_TIMESTAMP
     `).bind(
-      watchId, userId, movieId, progressSeconds || 0, durationSeconds || 0, completed ? 1 : 0, newRating,
-      progressSeconds, durationSeconds, completed ? 1 : 0, newRating
+      watchId, userId, movieId, progressSeconds, durationSeconds, completed, newRating
     ).run();
 
     return new Response(JSON.stringify({ success: true, isLiked: newRating === 5 }), {

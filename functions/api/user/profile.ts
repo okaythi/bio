@@ -4,7 +4,9 @@ export interface Env {
 
 interface ProfileRequestBody {
   displayName?: string;
+  display_name?: string;
   avatarUrl?: string;
+  avatar_url?: string;
   locale?: string;
   timezone?: string;
 }
@@ -29,6 +31,10 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const userId = await getUserIdFromSession(context);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -36,19 +42,21 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as ProfileRequestBody;
-    const { displayName, avatarUrl, locale, timezone } = body || {};
+    const displayName = body.displayName ?? body.display_name ?? null;
+    const avatarUrl = body.avatarUrl ?? body.avatar_url ?? null;
+    const locale = body.locale ?? null;
+    const timezone = body.timezone ?? null;
 
     await context.env.DB.prepare(`
       INSERT INTO user_profiles (user_id, display_name, avatar_url, locale, timezone)
       VALUES (?, ?, ?, ?, ?)
       ON CONFLICT(user_id) DO UPDATE SET
-        display_name = COALESCE(?, display_name),
-        avatar_url = COALESCE(?, avatar_url),
-        locale = COALESCE(?, locale),
-        timezone = COALESCE(?, timezone)
+        display_name = COALESCE(excluded.display_name, display_name),
+        avatar_url = COALESCE(excluded.avatar_url, avatar_url),
+        locale = COALESCE(excluded.locale, locale),
+        timezone = COALESCE(excluded.timezone, timezone)
     `).bind(
-      userId, displayName, avatarUrl, locale, timezone,
-      displayName, avatarUrl, locale, timezone
+      userId, displayName, avatarUrl, locale, timezone
     ).run();
 
     return new Response(JSON.stringify({ success: true }), {
