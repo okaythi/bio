@@ -16,6 +16,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
     const body = (await context.request.json()) as LoginRequestBody;
     const { email, password } = body || {};
@@ -29,7 +33,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const cleanEmail = email.trim().toLowerCase();
 
-    // Fetch user record
     const user = await context.env.DB.prepare(
       "SELECT id, email, password_hash, salt, role, status FROM users WHERE email = ?"
     ).bind(cleanEmail).first<{ id: string; email: string; password_hash: string; salt: string; role: string; status: string }>();
@@ -49,7 +52,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // Create a 7-day session token
     const sessionId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
     const clientIp = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
@@ -59,7 +61,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       "INSERT INTO sessions (id, user_id, ip_address, user_agent, expires_at) VALUES (?, ?, ?, ?, ?)"
     ).bind(sessionId, user.id, clientIp, userAgent, expiresAt).run();
 
-    // Fetch Profile & Preferences
     const profile = await context.env.DB.prepare(
       "SELECT display_name, avatar_url, locale, timezone FROM user_profiles WHERE user_id = ?"
     ).bind(user.id).first();

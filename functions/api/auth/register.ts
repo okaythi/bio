@@ -64,32 +64,26 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const { hash, salt } = await hashPassword(password);
     const userId = crypto.randomUUID();
 
-    // 1. Insert into users table
     await context.env.DB.prepare(
       "INSERT INTO users (id, email, password_hash, salt) VALUES (?, ?, ?, ?)"
     ).bind(userId, cleanEmail, hash, salt).run();
 
-    // 2. Initialize default profile
     await context.env.DB.prepare(
       "INSERT INTO user_profiles (user_id, display_name) VALUES (?, ?)"
     ).bind(userId, displayName || cleanEmail.split('@')[0]).run();
 
-    // 3. Initialize default subscription (free)
     await context.env.DB.prepare(
       "INSERT INTO user_subscriptions (user_id, plan_tier, status) VALUES (?, 'free', 'active')"
     ).bind(userId).run();
 
-    // 4. Initialize default preferences
     await context.env.DB.prepare(
       "INSERT INTO user_preferences (user_id) VALUES (?)"
     ).bind(userId).run();
 
-    // 5. Initialize default notification preferences
     await context.env.DB.prepare(
       "INSERT INTO notification_preferences (user_id) VALUES (?)"
     ).bind(userId).run();
 
-    // 6. Initialize default experiment bucket (public_beta_v1)
     const defaultExpJson = JSON.stringify({ EXPERIMENTS: ["public_beta_v1"], created_at: new Date().toISOString() });
     await context.env.DB.prepare(
       "INSERT INTO user_metadata_ext (user_id, namespace, data_json) VALUES (?, 'experiments', ?)"
