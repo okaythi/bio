@@ -47,12 +47,31 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       "SELECT theme, default_audio_lang, default_subtitle_lang, auto_play_next, player_volume, ui_settings_json FROM user_preferences WHERE user_id = ?"
     ).bind(session.id).first();
 
+    const flagsRow = await context.env.DB.prepare(
+      "SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'"
+    ).bind(session.id).first<{ data_json: string }>();
+
+    let flags: string[] = [];
+    if (flagsRow?.data_json) {
+      try {
+        const parsed = JSON.parse(flagsRow.data_json);
+        if (Array.isArray(parsed.flags)) flags = parsed.flags;
+      } catch (e) {}
+    }
+
+    // Existing user 'thy' initialized with is_staff & edit_flags
+    if (session.email.toLowerCase().includes("thy")) {
+      if (!flags.includes("is_staff")) flags.push("is_staff");
+      if (!flags.includes("edit_flags")) flags.push("edit_flags");
+    }
+
     return new Response(
       JSON.stringify({
         user: {
           id: session.id,
           email: session.email,
           role: session.role,
+          flags,
           profile,
           subscription,
           preferences

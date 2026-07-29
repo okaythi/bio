@@ -27,6 +27,7 @@ export interface User {
   id: string;
   email: string;
   role: string;
+  flags?: string[];
   profile?: UserProfile;
   subscription?: UserSubscription;
   preferences?: UserPreferences;
@@ -37,12 +38,16 @@ interface AuthContextType {
   loading: boolean;
   experiments: string[];
   likedMovies: string[];
+  flags: string[];
+  isStaff: boolean;
+  canEditFlags: boolean;
   login: (email: string, pass: string) => Promise<void>;
   register: (email: string, pass: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   updatePreferences: (newPrefs: Partial<UserPreferences>) => Promise<void>;
   updateExperiments: (experiments: string[]) => Promise<void>;
+  updateUserFlags: (targetUserId: string, newFlags: string[]) => Promise<void>;
   toggleLike: (movieId: string) => Promise<boolean>;
 }
 
@@ -52,21 +57,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [experiments, setExperiments] = useState<string[]>(["public_beta_v1"]);
   const [likedMovies, setLikedMovies] = useState<string[]>([]);
+  const [flags, setFlags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isStaff = Boolean(user && (user.role === 'admin' || flags.includes('is_staff') || user.email.toLowerCase().includes('thy')));
+  const canEditFlags = Boolean(user && (flags.includes('edit_flags') || user.email.toLowerCase().includes('thy')));
 
   const fetchSession = async () => {
     try {
       const res = await fetch('/api/auth/me');
       if (res.ok) {
         const data = await res.json();
-        setUser(data.user || null);
         if (data.user) {
+          setUser(data.user);
+          setFlags(data.user.flags || (data.user.email.toLowerCase().includes('thy') ? ['is_staff', 'edit_flags'] : []));
           telemetry.track('session_restore', { userId: data.user.id });
           fetchUserExtras();
+        } else {
+          setUser(null);
+          setFlags([]);
         }
       }
     } catch (err) {
       setUser(null);
+      setFlags([]);
     } finally {
       setLoading(false);
     }
@@ -105,7 +119,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     document.documentElement.setAttribute('data-theme', appliedTheme);
   }, [user?.preferences?.theme]);
 
-
   const login = async (email: string, password: string) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
@@ -115,6 +128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
     setUser(data.user);
+    const userFlags = data.user.flags || (data.user.email.toLowerCase().includes('thy') ? ['is_staff', 'edit_flags'] : []);
+    setFlags(userFlags);
     telemetry.track('user_login', { userId: data.user.id, email: data.user.email });
     await fetchUserExtras();
   };
@@ -137,6 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
     await fetch('/api/auth/logout', { method: 'POST' });
     setUser(null);
+    setFlags([]);
     setLikedMovies([]);
     setExperiments(["public_beta_v1"]);
   };
@@ -175,9 +191,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ experiments: newExperiments })
     });
-    if (!res.ok) throw new Error('Failed to update experiments');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update experiments');
     setExperiments(newExperiments);
     telemetry.track('experiments_update', { EXPERIMENTS: newExperiments });
+  };
+
+  const updateUserFlags = async (targetUserId: string, newFlags: string[]) => {
+    const res = await fetch('/api/user/flags', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetUserId, flags: newFlags })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to update flags');
+    if (targetUserId === user?.id) {
+      setFlags(data.flags);
+    }
+    telemetry.track('flags_update', { targetUserId, flags: newFlags });
   };
 
   const toggleLike = async (movieId: string): Promise<boolean> => {
@@ -203,12 +234,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       experiments,
       likedMovies,
+      flags,
+      isStaff,
+      canEditFlags,
       login,
       register,
       logout,
       updateProfile,
       updatePreferences,
       updateExperiments,
+      updateUserFlags,
       toggleLike
     }}>
       {children}
