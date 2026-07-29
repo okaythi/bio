@@ -1,8 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Bell, User } from 'lucide-react';
+import { Search, User } from 'lucide-react';
 
-export default function Navigation() {
+interface NavigationProps {
+  searchQuery?: string;
+  onSearchChange?: (query: string) => void;
+}
+
+export default function Navigation({ searchQuery, onSearchChange }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
@@ -22,8 +27,20 @@ export default function Navigation() {
         </div>
       </div>
       <div className="nav-right">
-        <Search className="nav-icon" />
-        <Bell className="nav-icon" />
+        {onSearchChange !== undefined ? (
+          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid white', padding: '4px 8px', borderRadius: '4px' }}>
+            <Search size={16} color="white" style={{ marginRight: '8px' }} />
+            <input 
+              type="text" 
+              placeholder="Titles..." 
+              value={searchQuery}
+              onChange={(e) => onSearchChange(e.target.value)}
+              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', width: '150px' }}
+            />
+          </div>
+        ) : (
+          <Search className="nav-icon" />
+        )}
         <User className="nav-icon" />
       </div>
     </nav>

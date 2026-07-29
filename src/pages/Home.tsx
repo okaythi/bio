@@ -11,6 +11,7 @@ import type { TMDBMovie } from '../services/tmdb';
 import type { MovieMetadata } from '../config/library';
 
 export default function Home() {
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedMovie, setSelectedMovie] = useState<TMDBMovie | null>(null);
   const [selectedMeta, setSelectedMeta] = useState<MovieMetadata | null>(null);
 
@@ -60,11 +61,22 @@ export default function Home() {
 
   if (isLoading) return <LoadingSkeleton />;
 
+  const progressMovies = movies?.map(m => {
+    const saved = localStorage.getItem(`bio-progress-${m.meta.id}`);
+    return { ...m, progress: saved ? parseFloat(saved) : 0 };
+  }) || [];
+
+  const filteredMovies = progressMovies.filter(m => 
+    m.tmdbData.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const continueWatching = progressMovies.filter(m => m.progress > 0 && m.progress < 95);
+
   return (
     <div className="home-container">
-      <Navigation />
+      <Navigation searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       
-      {movies && movies.length > 0 && (
+      {!searchQuery && movies && movies.length > 0 && (
         <div className="hero-billboard">
           <img 
             src={`https://image.tmdb.org/t/p/original${movies[0].tmdbData.backdrop_path}`} 
@@ -80,19 +92,56 @@ export default function Home() {
       )}
 
       <div className="movie-rows">
-        <h2 className="row-header">Available Now</h2>
-        <div className="carousel-container">
-          <div className="carousel">
-            {movies?.map(({meta, tmdbData}) => (
-              <MovieCard 
-                key={meta.id} 
-                movie={tmdbData} 
-                metadata={meta} 
-                onClick={handleCardClick} 
-              />
-            ))}
-          </div>
-        </div>
+        {searchQuery ? (
+          <>
+            <h2 className="row-header">Search Results</h2>
+            <div className="carousel-container">
+              <div className="carousel">
+                {filteredMovies.length > 0 ? filteredMovies.map(({meta, tmdbData}) => (
+                  <MovieCard 
+                    key={meta.id} 
+                    movie={tmdbData} 
+                    metadata={meta} 
+                    onClick={handleCardClick} 
+                  />
+                )) : <p style={{color: 'gray'}}>No movies found.</p>}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {continueWatching.length > 0 && (
+              <>
+                <h2 className="row-header">Continue Watching</h2>
+                <div className="carousel-container">
+                  <div className="carousel">
+                    {continueWatching.map(({meta, tmdbData}) => (
+                      <MovieCard 
+                        key={meta.id} 
+                        movie={tmdbData} 
+                        metadata={meta} 
+                        onClick={handleCardClick} 
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            <h2 className="row-header">Available Now</h2>
+            <div className="carousel-container">
+              <div className="carousel">
+                {progressMovies.map(({meta, tmdbData}) => (
+                  <MovieCard 
+                    key={meta.id} 
+                    movie={tmdbData} 
+                    metadata={meta} 
+                    onClick={handleCardClick} 
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* BUG-008: AnimatePresence must own the conditional so the exit animation fires */}
