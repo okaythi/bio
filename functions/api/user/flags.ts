@@ -40,8 +40,7 @@ async function getCallerInfo(context: EventContext<Env, string, Record<string, u
     } catch (e) {}
   }
 
-  const lowerEmail = row.email.toLowerCase();
-  if (row.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" || lowerEmail === "mathyschepers@proton.me") {
+  if (row.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
     if (!flags.includes("is_staff")) flags.push("is_staff");
     if (!flags.includes("edit_flags")) flags.push("edit_flags");
   }

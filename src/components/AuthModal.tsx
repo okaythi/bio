@@ -15,14 +15,18 @@ interface AdminUser {
   flags: string[];
 }
 
-const SYSTEM_BUCKETS = ["public_beta_v1", "beta_user"];
+const SYSTEM_BUCKETS = ["2026-07_public_beta_v1", "2026-07_beta_user", "public_beta_v1", "beta_user"];
 const ALLOWED_EXPERIMENT_BUCKETS = [
+  "2026-07_public_beta_v1",
+  "2026-07_beta_user",
+  "2026-07_auto_play_next_video",
+  "2026-07_smart_recommendations_v2",
+  "2026-07_hero_video_v2",
+  "2026-07_4k_player_beta",
+  "2026-07_ai_subtitles_v1",
   "public_beta_v1",
   "beta_user",
-  "smart_recommendations_v2",
-  "hero_video_v2",
-  "4k_player_beta",
-  "ai_subtitles_v1"
+  "auto_play_next_video"
 ];
 const KNOWN_FLAGS = ["is_staff", "edit_flags", "vip", "moderator"];
 
@@ -44,7 +48,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [expInput, setExpInput] = useState('');
   const [expList, setExpList] = useState<string[]>(experiments);
 
-  // Staff DevTools state
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -54,6 +57,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  const hasAutoPlayExp = Boolean(
+    experiments.includes('2026-07_auto_play_next_video') || experiments.includes('auto_play_next_video')
+  );
+
+  const username = (user?.profile?.display_name && user.profile.display_name.trim() !== '') 
+    ? user.profile.display_name 
+    : (user?.email ? user.email.split('@')[0] : 'User');
 
   useEffect(() => {
     setExpList(experiments);
@@ -84,12 +95,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const username = (user?.profile?.display_name && user.profile.display_name.trim() !== '') 
-    ? user.profile.display_name 
-    : (user?.email ? user.email.split('@')[0] : 'User');
-
   if (!isOpen) return null;
-
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -158,7 +164,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   const handleRemoveExperiment = (exp: string) => {
-    // Staff members can remove beta experiments if they wish! Non-staff cannot remove system buckets.
     if (!isStaff && SYSTEM_BUCKETS.includes(exp)) {
       setError(`System bucket "${exp}" cannot be removed.`);
       return;
@@ -190,7 +195,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const handleToggleFlag = (flagName: string) => {
     if (!selectedUser) return;
     const isSelf = selectedUser.id === user?.id;
-    // Self-protection check
     if (isSelf && (flagName === 'is_staff' || flagName === 'edit_flags')) {
       setError(`Security Protection: You cannot remove your own '${flagName}' permission.`);
       return;
@@ -206,7 +210,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     setLoading(true);
     try {
       await updateUserFlags(selectedUser.id, targetFlags);
-      setSuccess(`Flags updated for ${selectedUser.email}!`);
+      setSuccess(`Flags updated!`);
       fetchAdminUsers();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -252,14 +256,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>
               {user ? username : (isRegisterMode ? 'Create Account' : 'Sign In')}
             </h2>
-
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <X size={20} color="#888" />
           </button>
         </div>
 
-        {/* Tab Navigation if Logged In */}
         {user && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px', flexWrap: 'wrap' }}>
             <button 
@@ -326,7 +328,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </div>
         )}
 
-        {/* Tab 1: Auth / Account Status */}
         {(!user || activeTab === 'auth') && (
           <div>
             {user ? (
@@ -448,7 +449,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </div>
         )}
 
-        {/* Tab 2: Profile Edit */}
         {user && activeTab === 'profile' && (
           <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
@@ -480,7 +480,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </form>
         )}
 
-        {/* Tab 3: Preferences */}
         {user && activeTab === 'preferences' && (
           <form onSubmit={handlePreferencesSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
@@ -495,18 +494,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <option value="system">System Preference</option>
               </select>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Auto-play Next Video</div>
-                <div style={{ fontSize: '0.75rem', color: '#888' }}>Automatically play next episode when video ends</div>
+
+            {hasAutoPlayExp && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Auto-play Next Video</div>
+                  <div style={{ fontSize: '0.75rem', color: '#888' }}>Automatically play next episode when video ends</div>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={autoPlay} 
+                  onChange={(e) => setAutoPlay(e.target.checked)}
+                  style={{ width: '20px', height: '20px', accentColor: '#E50914' }}
+                />
               </div>
-              <input 
-                type="checkbox" 
-                checked={autoPlay} 
-                onChange={(e) => setAutoPlay(e.target.checked)}
-                style={{ width: '20px', height: '20px', accentColor: '#E50914' }}
-              />
-            </div>
+            )}
+
             <button 
               type="submit" 
               disabled={loading}
@@ -517,7 +520,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </form>
         )}
 
-        {/* Tab 4: Experiments Buckets */}
         {user && activeTab === 'experiments' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div style={{ fontSize: '0.8rem', color: '#aaa', lineHeight: '1.4' }}>
@@ -553,7 +555,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <div style={{ display: 'flex', gap: '8px' }}>
               <input 
                 type="text" 
-                placeholder="e.g. smart_recommendations_v2"
+                placeholder="e.g. 2026-07_auto_play_next_video"
                 value={expInput}
                 onChange={(e) => setExpInput(e.target.value)}
                 style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff', fontSize: '0.85rem' }}
@@ -579,7 +581,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           </div>
         )}
 
-        {/* Tab 5: Staff DevTools & Flag Management */}
         {user && isStaff && activeTab === 'staff' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ padding: '10px', backgroundColor: 'rgba(229,9,20,0.15)', border: '1px solid rgba(229,9,20,0.4)', borderRadius: '6px', color: '#ff6b6b', fontSize: '0.8rem' }}>
@@ -595,7 +596,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <Search size={16} color="#888" />
                   <input 
                     type="text" 
-                    placeholder="Search accounts by email..."
+                    placeholder="Search accounts..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
                     style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff', fontSize: '0.85rem' }}
@@ -606,7 +607,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   <div style={{ fontSize: '0.85rem', color: '#888' }}>Loading accounts...</div>
                 ) : (
                   <div style={{ display: 'flex', gap: '12px', minHeight: '180px' }}>
-                    {/* User List */}
                     <div style={{ width: '45%', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '10px', overflowY: 'auto', maxHeight: '200px' }}>
                       {filteredUsers.map(u => {
                         const isSelected = selectedUser?.id === u.id;
@@ -622,7 +622,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             }}
                           >
                             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {u.display_name || u.email} {isCurrent && '(You)'}
+                              {u.display_name || u.email.split('@')[0]} {isCurrent && '(You)'}
                             </span>
                             {u.flags.includes('is_staff') && <Shield size={12} color="#fff" />}
                           </div>
@@ -630,11 +630,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                       })}
                     </div>
 
-                    {/* Flags Checkboxes for Selected User */}
                     {selectedUser && (
                       <div style={{ flex: 1, paddingLeft: '6px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e5e5e5' }}>
-                          Flags for {selectedUser.email}
+                          Flags for {selectedUser.display_name || selectedUser.email.split('@')[0]}
                         </div>
 
                         {KNOWN_FLAGS.map(flag => {
@@ -651,7 +650,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                 padding: '6px 8px', backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: '4px',
                                 opacity: isProtectedSelfFlag ? 0.65 : 1
                               }}
-                              title={isProtectedSelfFlag ? "Security Rule: You cannot remove your own Staff or Edit Flags permission" : ""}
                             >
                               <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                 {flag} {isProtectedSelfFlag && <Lock size={12} color="#ff6b6b" />}

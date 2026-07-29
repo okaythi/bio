@@ -3,12 +3,16 @@ export interface Env {
 }
 
 export const VALID_EXPERIMENT_BUCKETS = [
+  "2026-07_public_beta_v1",
+  "2026-07_beta_user",
+  "2026-07_auto_play_next_video",
+  "2026-07_smart_recommendations_v2",
+  "2026-07_hero_video_v2",
+  "2026-07_4k_player_beta",
+  "2026-07_ai_subtitles_v1",
   "public_beta_v1",
   "beta_user",
-  "smart_recommendations_v2",
-  "hero_video_v2",
-  "4k_player_beta",
-  "ai_subtitles_v1"
+  "auto_play_next_video"
 ];
 
 interface ExperimentsRequestBody {
@@ -46,7 +50,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const userId = await getUserIdFromSession(context);
   if (!userId) {
-    return new Response(JSON.stringify({ experiments: ["public_beta_v1"] }), {
+    return new Response(JSON.stringify({ experiments: ["2026-07_public_beta_v1", "2026-07_auto_play_next_video"] }), {
       headers: { "Content-Type": "application/json", ...corsHeaders }
     });
   }
@@ -55,7 +59,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     "SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'experiments'"
   ).bind(userId).first<{ data_json: string }>();
 
-  let experiments: string[] = ["public_beta_v1"];
+  let experiments: string[] = ["2026-07_public_beta_v1", "2026-07_auto_play_next_video"];
   if (row?.data_json) {
     try {
       const parsed = JSON.parse(row.data_json) as ExperimentMetaRow;
@@ -65,9 +69,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     } catch (e) {}
   }
 
-  // Ensure public_beta_v1 is always present for logged-in users for now
-  if (!experiments.includes("public_beta_v1") && !experiments.includes("beta_user")) {
-    experiments.unshift("public_beta_v1");
+  if (!experiments.includes("2026-07_public_beta_v1") && !experiments.includes("public_beta_v1") && !experiments.includes("2026-07_beta_user") && !experiments.includes("beta_user")) {
+    experiments.unshift("2026-07_public_beta_v1");
   }
 
   return new Response(JSON.stringify({ experiments }), {
@@ -95,7 +98,6 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     const body = (await context.request.json()) as ExperimentsRequestBody;
     const experiments = Array.isArray(body?.experiments) ? body.experiments : [];
 
-    // Reject non-whitelisted experiment buckets
     const invalidBucket = experiments.find((b) => !VALID_EXPERIMENT_BUCKETS.includes(b));
     if (invalidBucket) {
       return new Response(

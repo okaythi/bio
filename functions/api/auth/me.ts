@@ -59,16 +59,14 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       } catch (e) {}
     }
 
-    const lowerEmail = session.email.toLowerCase();
-
-    if (session.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" || lowerEmail === "mathyschepers@proton.me") {
+    if (session.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
       if (!flags.includes("is_staff")) flags.push("is_staff");
       if (!flags.includes("edit_flags")) flags.push("edit_flags");
     }
 
     const effectiveProfile = {
       ...profile,
-      display_name: profile?.display_name || (lowerEmail === "mathyschepers@proton.me" ? "thy" : session.email.split('@')[0])
+      display_name: profile?.display_name || (session.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" ? "thy" : session.email.split('@')[0])
     };
 
     return new Response(
