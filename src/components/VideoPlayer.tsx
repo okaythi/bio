@@ -345,8 +345,34 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         onPlaying={() => setIsBuffering(false)}
         onCanPlay={handleCanPlay}
         onTimeUpdate={handleTimeUpdate}
-        onError={() => {
-          setVideoError('This video failed to load. Please go back and try again.');
+        onError={(e) => {
+          const mediaError = e.currentTarget.error;
+          const isCodecOrFormatError =
+            !mediaError ||
+            mediaError.code === MediaError.MEDIA_ERR_DECODE ||
+            mediaError.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED ||
+            (mediaError.message && (
+              mediaError.message.includes('NOT_SUPPORTED') ||
+              mediaError.message.includes('0x80060003') ||
+              mediaError.message.includes('codecs') ||
+              mediaError.message.includes('HEVC')
+            ));
+
+          if (isCodecOrFormatError) {
+            const bioMsg = 'BIO-006: Unsupported video codec (HEVC/H.265). This browser cannot play this video format.';
+            console.error(
+              `[BIO-006] Intercepted Video Error: Unsupported Codec (HEVC/H.265)\n` +
+              `URL: ${metadata.videoUrl}\n` +
+              `MediaError Code: ${mediaError?.code ?? 'N/A'}\n` +
+              `Details: ${mediaError?.message || 'NS_ERROR_DOM_MEDIA_NOT_SUPPORTED_ERR (0x80060003)'}\n` +
+              `Fix: Transcode video stream to H.264 (AVC) using FFmpeg (-c:v libx264 / -c:v h264_qsv).`
+            );
+            setVideoError(bioMsg);
+          } else {
+            const bioMsg = `BIO-007: Failed to load video stream (Error code ${mediaError.code}).`;
+            console.error(`[BIO-007] Video Playback Error:`, mediaError.message || mediaError);
+            setVideoError(bioMsg);
+          }
           setIsBuffering(false);
         }}
         onClick={togglePlay}
