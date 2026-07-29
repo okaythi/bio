@@ -8,6 +8,16 @@ interface AuthModalProps {
   onClose: () => void;
 }
 
+const SYSTEM_BUCKETS = ["public_beta_v1", "beta_user"];
+const ALLOWED_EXPERIMENT_BUCKETS = [
+  "public_beta_v1",
+  "beta_user",
+  "smart_recommendations_v2",
+  "hero_video_v2",
+  "4k_player_beta",
+  "ai_subtitles_v1"
+];
+
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const { user, login, register, logout, updateProfile, updatePreferences, experiments, updateExperiments } = useAuth();
   
@@ -82,14 +92,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   };
 
   const handleAddExperiment = () => {
-    if (expInput.trim() && !expList.includes(expInput.trim())) {
-      const next = [...expList, expInput.trim()];
-      setExpList(next);
+    const trimmed = expInput.trim();
+    if (!trimmed) return;
+    if (!ALLOWED_EXPERIMENT_BUCKETS.includes(trimmed)) {
+      setError(`Unrecognized experiment bucket "${trimmed}". Allowed: ${ALLOWED_EXPERIMENT_BUCKETS.join(', ')}`);
+      return;
+    }
+    if (!expList.includes(trimmed)) {
+      setExpList([...expList, trimmed]);
       setExpInput('');
+      setError(null);
     }
   };
 
   const handleRemoveExperiment = (exp: string) => {
+    if (SYSTEM_BUCKETS.includes(exp)) {
+      setError(`System bucket "${exp}" cannot be removed.`);
+      return;
+    }
     setExpList(expList.filter(e => e !== exp));
   };
 
@@ -125,11 +145,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         style={{
           maxWidth: '520px',
           width: '90%',
-          backgroundColor: '#141414',
+          backgroundColor: 'var(--modal-bg)',
           borderRadius: '12px',
           padding: '28px',
           border: '1px solid rgba(255,255,255,0.1)',
-          color: '#fff',
+          color: 'var(--foreground)',
           boxShadow: '0 20px 40px rgba(0,0,0,0.8)'
         }}
       >
@@ -149,7 +169,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {user && (
           <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '10px' }}>
             <button 
-              onClick={() => setActiveTab('auth')}
+              onClick={() => { setActiveTab('auth'); setError(null); }}
               style={{
                 background: activeTab === 'auth' ? '#E50914' : 'transparent',
                 color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
@@ -158,7 +178,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               Account
             </button>
             <button 
-              onClick={() => setActiveTab('profile')}
+              onClick={() => { setActiveTab('profile'); setError(null); }}
               style={{
                 background: activeTab === 'profile' ? '#E50914' : 'transparent',
                 color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
@@ -167,7 +187,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               Profile
             </button>
             <button 
-              onClick={() => setActiveTab('preferences')}
+              onClick={() => { setActiveTab('preferences'); setError(null); }}
               style={{
                 background: activeTab === 'preferences' ? '#E50914' : 'transparent',
                 color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
@@ -176,7 +196,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               Preferences
             </button>
             <button 
-              onClick={() => setActiveTab('experiments')}
+              onClick={() => { setActiveTab('experiments'); setError(null); }}
               style={{
                 background: activeTab === 'experiments' ? '#E50914' : 'transparent',
                 color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem',
@@ -225,7 +245,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   onClick={logout}
                   style={{
                     marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
-                    backgroundColor: 'rgba(255,255,255,0.1)', color: '#fff', border: 'none', padding: '12px', borderRadius: '6px',
+                    backgroundColor: 'rgba(255,255,255,0.1)', color: 'var(--foreground)', border: 'none', padding: '12px', borderRadius: '6px',
                     cursor: 'pointer', fontWeight: 600
                   }}
                 >
@@ -380,18 +400,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             <div style={{ backgroundColor: '#000', padding: '10px', borderRadius: '6px', border: '1px solid #333' }}>
               <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '6px' }}>EXPERIMENTS: []</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {expList.map((exp) => (
-                  <span 
-                    key={exp} 
-                    style={{
-                      backgroundColor: 'rgba(229, 9, 20, 0.2)', border: '1px solid #E50914', color: '#fff',
-                      padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px'
-                    }}
-                  >
-                    {exp}
-                    <X size={12} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => handleRemoveExperiment(exp)} />
-                  </span>
-                ))}
+                {expList.map((exp) => {
+                  const isSystemBucket = SYSTEM_BUCKETS.includes(exp);
+                  return (
+                    <span 
+                      key={exp} 
+                      style={{
+                        backgroundColor: isSystemBucket ? 'rgba(229, 9, 20, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                        border: isSystemBucket ? '1px solid #E50914' : '1px solid rgba(255,255,255,0.2)',
+                        color: '#fff', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '6px'
+                      }}
+                    >
+                      {exp} {isSystemBucket && <span style={{ fontSize: '0.65rem', color: '#ff6b6b' }}>(System)</span>}
+                      {!isSystemBucket && (
+                        <X size={12} color="#aaa" style={{ cursor: 'pointer' }} onClick={() => handleRemoveExperiment(exp)} />
+                      )}
+                    </span>
+                  );
+                })}
                 {expList.length === 0 && <span style={{ fontSize: '0.8rem', color: '#666' }}>No active experiment buckets.</span>}
               </div>
             </div>
@@ -410,6 +436,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               >
                 Add Bucket
               </button>
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#777' }}>
+              Allowed buckets: {ALLOWED_EXPERIMENT_BUCKETS.join(', ')}
             </div>
 
             <button 

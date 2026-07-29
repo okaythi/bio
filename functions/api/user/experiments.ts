@@ -2,6 +2,15 @@ export interface Env {
   DB: D1Database;
 }
 
+export const VALID_EXPERIMENT_BUCKETS = [
+  "public_beta_v1",
+  "beta_user",
+  "smart_recommendations_v2",
+  "hero_video_v2",
+  "4k_player_beta",
+  "ai_subtitles_v1"
+];
+
 interface ExperimentsRequestBody {
   experiments?: string[];
 }
@@ -31,6 +40,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const userId = await getUserIdFromSession(context);
   if (!userId) {
     return new Response(JSON.stringify({ experiments: ["public_beta_v1"] }), {
@@ -42,7 +55,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     "SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'experiments'"
   ).bind(userId).first<{ data_json: string }>();
 
-  let experiments: string[] = ["public_beta_v1", "recommendations_v2"];
+  let experiments: string[] = ["public_beta_v1"];
   if (row?.data_json) {
     try {
       const parsed = JSON.parse(row.data_json) as ExperimentMetaRow;
@@ -50,6 +63,11 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
         experiments = parsed.EXPERIMENTS;
       }
     } catch (e) {}
+  }
+
+  // Ensure public_beta_v1 is always present for logged-in users for now
+  if (!experiments.includes("public_beta_v1") && !experiments.includes("beta_user")) {
+    experiments.unshift("public_beta_v1");
   }
 
   return new Response(JSON.stringify({ experiments }), {
@@ -64,6 +82,10 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     "Access-Control-Allow-Headers": "Content-Type"
   };
 
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   const userId = await getUserIdFromSession(context);
   if (!userId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
@@ -73,13 +95,24 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     const body = (await context.request.json()) as ExperimentsRequestBody;
     const experiments = Array.isArray(body?.experiments) ? body.experiments : [];
 
+    // Reject non-whitelisted experiment buckets
+    const invalidBucket = experiments.find((b) => !VALID_EXPERIMENT_BUCKETS.includes(b));
+    if (invalidBucket) {
+      return new Response(
+        JSON.stringify({
+          error: `Unrecognized experiment bucket "${invalidBucket}". Valid buckets: ${VALID_EXPERIMENT_BUCKETS.join(", ")}`
+        }),
+        { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
+      );
+    }
+
     const dataJson = JSON.stringify({ EXPERIMENTS: experiments, updated_at: new Date().toISOString() });
 
     await context.env.DB.prepare(`
       INSERT INTO user_metadata_ext (user_id, namespace, data_json)
       VALUES (?, 'experiments', ?)
-      ON CONFLICT(user_id, namespace) DO UPDATE SET data_json = ?
-    `).bind(userId, dataJson, dataJson).run();
+      ON CONFLICT(user_id, namespace) DO UPDATE SET data_json = excluded.data_json
+    `).bind(userId, dataJson).run();
 
     return new Response(JSON.stringify({ success: true, experiments }), {
       headers: { "Content-Type": "application/json", ...corsHeaders }
