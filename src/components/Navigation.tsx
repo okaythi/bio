@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { Search, Bell, User } from 'lucide-react';
 
 export default function Navigation() {
@@ -17,9 +18,9 @@ export default function Navigation() {
       <div className="nav-left">
         <span className="nav-logo">bio</span>
         <div className="nav-links">
-          <a href="#" className="active">Home</a>
-          <a href="#">Movies</a>
-          <a href="#">My List</a>
+          <Link to="/" className="active">Home</Link>
+          <a href="#" onClick={(e) => e.preventDefault()}>Movies</a>
+          <a href="#" onClick={(e) => e.preventDefault()}>My List</a>
         </div>
       </div>
       <div className="nav-right">

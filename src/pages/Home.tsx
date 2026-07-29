@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { fetchLibrary } from '../config/library';
 import { searchMovie, getMovieVideos } from '../services/tmdb';
@@ -19,14 +20,13 @@ export default function Home() {
   });
 
   const { data: movies, isLoading: isMoviesLoading } = useQuery({
-    queryKey: ['tmdbMovies', library?.length],
+    queryKey: ['tmdbMovies', library?.map(m => `${m.id}-${m.title}`).join(',')],
     queryFn: async () => {
       if (!library) return [];
       const fetches = library.map(async (meta) => {
         const tmdbData = await searchMovie(meta.title, meta.year || '');
         if (tmdbData) {
-          meta.tmdbId = tmdbData.id;
-          return { meta, tmdbData };
+          return { meta: { ...meta, tmdbId: tmdbData.id }, tmdbData };
         }
         return null;
       });
@@ -93,12 +93,17 @@ export default function Home() {
         </div>
       </div>
 
-      <TrailerModal 
-        movie={selectedMovie} 
-        metadata={selectedMeta} 
-        trailerKey={trailerKey} 
-        onClose={closeModal} 
-      />
+      {/* BUG-008: AnimatePresence must own the conditional so the exit animation fires */}
+      <AnimatePresence>
+        {selectedMovie && selectedMeta && (
+          <TrailerModal
+            movie={selectedMovie}
+            metadata={selectedMeta}
+            trailerKey={trailerKey}
+            onClose={closeModal}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }
