@@ -26,7 +26,9 @@ export default function Home() {
       const fetches = library.map(async (meta) => {
         const tmdbData = await searchMovie(meta.title, meta.year || '');
         if (tmdbData) {
-          return { meta: { ...meta, tmdbId: tmdbData.id }, tmdbData };
+          // BUG-004: spread instead of mutating the cached meta object directly
+          const newMeta: MovieMetadata = { ...meta, tmdbId: tmdbData.id };
+          return { meta: newMeta, tmdbData };
         }
         return null;
       });
