@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { Search, User as UserIcon, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
@@ -54,9 +53,6 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
       <nav className={`nav-container ${isScrolled ? 'scrolled' : ''}`}>
         <div className="nav-left">
           <span className="nav-logo">bio</span>
-          <div className="nav-links">
-            <Link to="/" className="active">Home</Link>
-          </div>
         </div>
         <div className="nav-right">
           {onSearchChange !== undefined ? (
