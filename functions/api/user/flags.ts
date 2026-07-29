@@ -41,7 +41,7 @@ async function getCallerInfo(context: EventContext<Env, string, Record<string, u
   }
 
   const lowerEmail = row.email.toLowerCase();
-  if (lowerEmail.includes("thy") || lowerEmail.includes("mathyschepers") || row.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
+  if (row.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" || lowerEmail === "mathyschepers@proton.me") {
     if (!flags.includes("is_staff")) flags.push("is_staff");
     if (!flags.includes("edit_flags")) flags.push("edit_flags");
   }
@@ -100,7 +100,6 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
     const cleanFlags = Array.from(new Set(requestedFlags.filter(f => KNOWN_FLAGS.includes(f))));
 
-    // Protect caller from removing their own is_staff or edit_flags
     if (targetUserId === caller.userId) {
       if (caller.flags.includes("is_staff") && !cleanFlags.includes("is_staff")) {
         cleanFlags.push("is_staff");

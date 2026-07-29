@@ -1,4 +1,3 @@
-// src/context/AuthContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { telemetry } from '../services/telemetry';
 
@@ -60,8 +59,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [flags, setFlags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const isStaff = Boolean(user && (user.role === 'admin' || flags.includes('is_staff') || user.email.toLowerCase().includes('thy')));
-  const canEditFlags = Boolean(user && (flags.includes('edit_flags') || user.email.toLowerCase().includes('thy')));
+  const isThyOwner = Boolean(user && (user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' || user.email.toLowerCase() === 'mathyschepers@proton.me'));
+  const isStaff = Boolean(user && (user.role === 'admin' || flags.includes('is_staff') || isThyOwner));
+  const canEditFlags = Boolean(user && (flags.includes('edit_flags') || isThyOwner));
 
   const fetchSession = async () => {
     try {
@@ -70,7 +70,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await res.json();
         if (data.user) {
           setUser(data.user);
-          setFlags(data.user.flags || (data.user.email.toLowerCase().includes('thy') ? ['is_staff', 'edit_flags'] : []));
+          const isUserThy = data.user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' || data.user.email.toLowerCase() === 'mathyschepers@proton.me';
+          setFlags(data.user.flags || (isUserThy ? ['is_staff', 'edit_flags'] : []));
           telemetry.track('session_restore', { userId: data.user.id });
           fetchUserExtras();
         } else {
@@ -109,7 +110,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     fetchSession();
   }, []);
 
-  // Sync theme preference to DOM dataset
   useEffect(() => {
     const theme = user?.preferences?.theme || 'dark';
     let appliedTheme = theme;
@@ -128,7 +128,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
     setUser(data.user);
-    const userFlags = data.user.flags || (data.user.email.toLowerCase().includes('thy') ? ['is_staff', 'edit_flags'] : []);
+    const isUserThy = data.user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' || data.user.email.toLowerCase() === 'mathyschepers@proton.me';
+    const userFlags = data.user.flags || (isUserThy ? ['is_staff', 'edit_flags'] : []);
     setFlags(userFlags);
     telemetry.track('user_login', { userId: data.user.id, email: data.user.email });
     await fetchUserExtras();

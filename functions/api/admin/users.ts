@@ -50,8 +50,9 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       if (Array.isArray(parsed.flags)) callerFlags = parsed.flags;
     } catch (e) {}
   }
+
   const lowerCallerEmail = caller.email.toLowerCase();
-  if (lowerCallerEmail.includes("thy") || lowerCallerEmail.includes("mathyschepers")) {
+  if (caller.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" || lowerCallerEmail === "mathyschepers@proton.me") {
     if (!callerFlags.includes("is_staff")) callerFlags.push("is_staff");
     if (!callerFlags.includes("edit_flags")) callerFlags.push("edit_flags");
   }
@@ -82,7 +83,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     }
 
     const lowerUEmail = u.email.toLowerCase();
-    if (lowerUEmail.includes("thy") || lowerUEmail.includes("mathyschepers")) {
+    if (u.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" || lowerUEmail === "mathyschepers@proton.me") {
       if (!uFlags.includes("is_staff")) uFlags.push("is_staff");
       if (!uFlags.includes("edit_flags")) uFlags.push("edit_flags");
     }
@@ -90,7 +91,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     userList.push({
       id: u.id,
       email: u.email,
-      display_name: u.display_name || (lowerUEmail.includes("mathyschepers") ? "thy" : u.email.split('@')[0]),
+      display_name: u.display_name || (lowerUEmail === "mathyschepers@proton.me" ? "thy" : u.email.split('@')[0]),
       flags: uFlags
     });
   }
