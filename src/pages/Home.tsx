@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
+import { Search } from 'lucide-react';
 import { fetchLibrary } from '../config/library';
 import { searchMovie, getMovieVideos } from '../services/tmdb';
 import Navigation from '../components/Navigation';
@@ -70,46 +71,54 @@ export default function Home() {
     m.tmdbData.title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const continueWatching = progressMovies.filter(m => m.progress > 0 && m.progress < 95);
+  const continueWatching = progressMovies.filter(m => m.progress > 2.77 && m.progress < 95);
+  const availableNow = progressMovies.filter(m => !(m.progress > 2.77 && m.progress < 95));
 
   return (
     <div className="home-container">
       <Navigation searchQuery={searchQuery} onSearchChange={setSearchQuery} />
       
-      {!searchQuery && movies && movies.length > 0 && (
-        <div className="hero-billboard">
-          <img 
-            src={`https://image.tmdb.org/t/p/original${movies[0].tmdbData.backdrop_path}`} 
-            alt={movies[0].tmdbData.title}
-            className="hero-backdrop"
-          />
-          <div className="hero-vignette"></div>
-          <div className="hero-content">
-            <h1 className="hero-title">{movies[0].tmdbData.title}</h1>
-            <p className="hero-overview">{movies[0].tmdbData.overview}</p>
-          </div>
+      {searchQuery ? (
+        <div className="search-results-container">
+          <h2 className="search-results-header">
+            Search results for <span>"{searchQuery}"</span>
+          </h2>
+          {filteredMovies.length > 0 ? (
+            <div className="search-grid">
+              {filteredMovies.map(({meta, tmdbData}) => (
+                <MovieCard 
+                  key={meta.id} 
+                  movie={tmdbData} 
+                  metadata={meta} 
+                  onClick={handleCardClick} 
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="no-results">
+              <Search size={56} color="#444" style={{ marginBottom: '16px' }} />
+              <p>No titles found matching "{searchQuery}"</p>
+            </div>
+          )}
         </div>
-      )}
-
-      <div className="movie-rows">
-        {searchQuery ? (
-          <>
-            <h2 className="row-header">Search Results</h2>
-            <div className="carousel-container">
-              <div className="carousel">
-                {filteredMovies.length > 0 ? filteredMovies.map(({meta, tmdbData}) => (
-                  <MovieCard 
-                    key={meta.id} 
-                    movie={tmdbData} 
-                    metadata={meta} 
-                    onClick={handleCardClick} 
-                  />
-                )) : <p style={{color: 'gray'}}>No movies found.</p>}
+      ) : (
+        <>
+          {movies && movies.length > 0 && (
+            <div className="hero-billboard">
+              <img 
+                src={`https://image.tmdb.org/t/p/original${movies[0].tmdbData.backdrop_path}`} 
+                alt={movies[0].tmdbData.title}
+                className="hero-backdrop"
+              />
+              <div className="hero-vignette"></div>
+              <div className="hero-content">
+                <h1 className="hero-title">{movies[0].tmdbData.title}</h1>
+                <p className="hero-overview">{movies[0].tmdbData.overview}</p>
               </div>
             </div>
-          </>
-        ) : (
-          <>
+          )}
+
+          <div className="movie-rows">
             {continueWatching.length > 0 && (
               <>
                 <h2 className="row-header">Continue Watching</h2>
@@ -127,22 +136,26 @@ export default function Home() {
                 </div>
               </>
             )}
-            <h2 className="row-header">Available Now</h2>
-            <div className="carousel-container">
-              <div className="carousel">
-                {progressMovies.map(({meta, tmdbData}) => (
-                  <MovieCard 
-                    key={meta.id} 
-                    movie={tmdbData} 
-                    metadata={meta} 
-                    onClick={handleCardClick} 
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+            {availableNow.length > 0 && (
+              <>
+                <h2 className="row-header">Available Now</h2>
+                <div className="carousel-container">
+                  <div className="carousel">
+                    {availableNow.map(({meta, tmdbData}) => (
+                      <MovieCard 
+                        key={meta.id} 
+                        movie={tmdbData} 
+                        metadata={meta} 
+                        onClick={handleCardClick} 
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </>
+      )}
 
       {/* BUG-008: AnimatePresence must own the conditional so the exit animation fires */}
       <AnimatePresence>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, User } from 'lucide-react';
+import { Search, User, X } from 'lucide-react';
 
 interface NavigationProps {
   searchQuery?: string;
@@ -28,15 +28,24 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
       </div>
       <div className="nav-right">
         {onSearchChange !== undefined ? (
-          <div style={{ display: 'flex', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', border: '1px solid white', padding: '4px 8px', borderRadius: '4px' }}>
-            <Search size={16} color="white" style={{ marginRight: '8px' }} />
+          <div className="nav-search-box">
+            <Search size={18} color="rgba(255,255,255,0.7)" />
             <input 
               type="text" 
-              placeholder="Titles..." 
+              placeholder="Search titles..." 
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
-              style={{ background: 'transparent', border: 'none', color: 'white', outline: 'none', width: '150px' }}
+              className="nav-search-input"
             />
+            {searchQuery && (
+              <button 
+                className="nav-search-clear" 
+                onClick={() => onSearchChange('')} 
+                aria-label="Clear search"
+              >
+                <X size={16} />
+              </button>
+            )}
           </div>
         ) : (
           <Search className="nav-icon" />
