@@ -34,13 +34,22 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [ccEnabled, setCcEnabled] = useState(false);
   const [vttUrl, setVttUrl] = useState<string | null>(null);
+  const [videoError, setVideoError] = useState<string | null>(null);
 
   // Thumbnail states
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
   const [hoverX, setHoverX] = useState(0);
   const [hoverTime, setHoverTime] = useState(0);
-  
+
   const timeoutRef = useRef<number | null>(null);
+  // Refs mirror mutable state for stable event handlers (avoids stale closures — BUG-007)
+  const isMutedRef = useRef(false);
+  const volumeRef = useRef(100);
+  const ccEnabledRef = useRef(false);
+
+  useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
+  useEffect(() => { volumeRef.current = volume; }, [volume]);
+  useEffect(() => { ccEnabledRef.current = ccEnabled; }, [ccEnabled]);
 
   useEffect(() => {
     const handleMouseMove = () => {
@@ -59,13 +68,34 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.code === 'Space') {
         e.preventDefault();
-        togglePlay();
+        if (videoRef.current) {
+          if (videoRef.current.paused) { videoRef.current.play(); setIsPlaying(true); }
+          else { videoRef.current.pause(); setIsPlaying(false); }
+        }
       } else if (e.code === 'KeyF') {
-        toggleFullscreen();
+        if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+        else document.exitFullscreen();
       } else if (e.code === 'KeyM') {
-        toggleMute();
+        if (videoRef.current) {
+          if (isMutedRef.current) {
+            const newVol = volumeRef.current === 0 ? 50 : volumeRef.current;
+            videoRef.current.volume = newVol / 100;
+            videoRef.current.muted = false;
+            setVolume(newVol);
+            setIsMuted(false);
+          } else {
+            videoRef.current.muted = true;
+            setVolume(0);
+            setIsMuted(true);
+          }
+        }
       } else if (e.code === 'KeyC') {
-        toggleCC();
+        if (videoRef.current && videoRef.current.textTracks[0]) {
+          const track = videoRef.current.textTracks[0];
+          const newState = !ccEnabledRef.current;
+          track.mode = newState ? 'showing' : 'hidden';
+          setCcEnabled(newState);
+        }
       } else if (e.code === 'ArrowRight') {
         if (videoRef.current) videoRef.current.currentTime += 10;
       } else if (e.code === 'ArrowLeft') {
@@ -74,17 +104,18 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [ccEnabled]);
+  }, []); // stable: stale-prone state is read via refs
 
   useEffect(() => {
     let url = "";
     if (metadata.subtitleUrl) {
       fetch(metadata.subtitleUrl)
-        .then(r => r.text())
+        .then(r => r.ok ? r.text() : null)
         .then(srtText => {
+          if (!srtText) return; // subtitle file missing or non-OK response (BUG-001)
           const vttText = "WEBVTT\n\n" + srtText
             .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2")
-            .replace(/(--> \d{2}:\d{2}:\d{2}\.\d{3})/g, "$1 line:85%");
+            .replace(/(-->\s+\d{2}:\d{2}:\d{2}\.\d{3})/g, "$1 line:85%"); // \s+ handles varying SRT spacing (BUG-005)
           const blob = new Blob([vttText], { type: "text/vtt" });
           url = URL.createObjectURL(blob);
           setVttUrl(url);
@@ -226,7 +257,12 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         onPause={() => setIsPlaying(false)}
         onWaiting={() => setIsBuffering(true)}
         onPlaying={() => setIsBuffering(false)}
+        onCanPlay={() => setIsBuffering(false)}
         onTimeUpdate={handleTimeUpdate}
+        onError={() => {
+          setVideoError('This video failed to load. Please go back and try again.');
+          setIsBuffering(false);
+        }}
         onClick={togglePlay}
         onDoubleClick={toggleFullscreen}
       >
@@ -251,9 +287,19 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         onSeeked={handleHiddenVideoSeeked}
       />
       
-      {isBuffering && (
+      {isBuffering && !videoError && (
         <div className="custom-spinner">
           <div className="spinner-ring"></div>
+        </div>
+      )}
+
+      {videoError && (
+        <div className="video-error-overlay">
+          <div className="video-error-content">
+            <span className="video-error-icon">⚠</span>
+            <p className="video-error-message">{videoError}</p>
+            <button className="play-button" onClick={() => navigate(-1)}>← Go Back</button>
+          </div>
         </div>
       )}
 
@@ -319,7 +365,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
             </div>
             
             <div className="controls-right">
-              {metadata.subtitleUrl && (
+              {vttUrl && (
                 <button 
                   onClick={toggleCC} 
                   className={`cc-button ${ccEnabled ? 'active' : ''}`}

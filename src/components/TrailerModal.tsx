@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion'; // AnimatePresence lives in parent (BUG-008)
 import { Play, X, Plus, ThumbsUp, Volume2, VolumeX } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
@@ -8,8 +8,8 @@ import type { TMDBMovie } from '../services/tmdb';
 import type { MovieMetadata } from '../config/library';
 
 interface TrailerModalProps {
-  movie: TMDBMovie | null;
-  metadata: MovieMetadata | null;
+  movie: TMDBMovie;
+  metadata: MovieMetadata;
   trailerKey?: string;
   onClose: () => void;
 }
@@ -57,12 +57,9 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
     }
   };
 
-  if (!movie || !metadata) return null;
-
   return (
-    <AnimatePresence>
-      <motion.div 
-        className="modal-overlay"
+    <motion.div
+      className="modal-overlay"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -142,7 +139,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
           <div className="modal-details">
             <div className="modal-info-left">
               <div className="modal-meta">
-                <span className="match">98% Match</span>
+                <span className="match">{Math.round(movie.vote_average * 10)}% Match</span>
                 <span>{movie.release_date.split('-')[0]}</span>
                 {movie.runtime && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>}
                 <span className="hd">HD</span>
@@ -157,8 +154,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
               )}
             </div>
           </div>
-        </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </motion.div>
   );
 }
