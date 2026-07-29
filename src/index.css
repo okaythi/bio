@@ -606,6 +606,14 @@ body {
 }
 
 /* Movie Card Progress */
+.movie-card-checkmark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 10;
+  filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.6));
+}
+
 .movie-card-progress-container {
   position: absolute;
   bottom: 0;
