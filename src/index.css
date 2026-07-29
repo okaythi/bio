@@ -455,8 +455,8 @@ body {
   overflow: hidden;
 }
 
-.hide-cursor {
-  cursor: none;
+.hide-cursor, .hide-cursor * {
+  cursor: none !important;
 }
 
 .video-element {

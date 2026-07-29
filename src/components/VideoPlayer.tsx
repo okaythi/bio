@@ -67,16 +67,24 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   useEffect(() => { ccEnabledRef.current = ccEnabled; }, [ccEnabled]);
 
   useEffect(() => {
+    const isPC = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+    const timeoutDuration = isPC ? 3030 : 2500;
+
     const handleMouseMove = () => {
       setShowControls(true);
       if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
       timeoutRef.current = window.setTimeout(() => {
         if (isPlaying) setShowControls(false);
-      }, 2500);
+      }, timeoutDuration);
     };
+
+    handleMouseMove();
     
     window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
+    };
   }, [isPlaying]);
 
   useEffect(() => {
