@@ -3,6 +3,7 @@ const R2_CDN = "https://cdn.bio.sudothy.me";
 export interface MovieMetadata {
   id: string;
   videoUrl: string;
+  h264Url?: string;
   subtitles?: { lang: string; url: string }[];
   title: string;
   year?: string;
