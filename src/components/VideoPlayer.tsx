@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Subtitles } from 'lucide-react';
 import type { MovieMetadata } from '../config/library';
+import { useAuth } from '../context/AuthContext';
 
 interface VideoPlayerProps {
   metadata: MovieMetadata;
@@ -26,6 +27,7 @@ const formatTime = (seconds: number) => {
 };
 
 export default function VideoPlayer({ metadata }: VideoPlayerProps) {
+  const { user } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,6 +43,18 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [progress, setProgress] = useState(0);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
+
+  // H.264 fallback states
+  const [activeVideoUrl, setActiveVideoUrl] = useState(metadata.videoUrl);
+  const [isUsingH264Fallback, setIsUsingH264Fallback] = useState(false);
+  const [showH264Tooltip, setShowH264Tooltip] = useState(false);
+
+  // Determine tooltip theme from AuthContext user preferences (defaults to dark)
+  const userPrefTheme = user?.preferences?.theme || 'dark';
+  let activeTheme = userPrefTheme;
+  if (userPrefTheme === 'system') {
+    activeTheme = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+  }
 
   const [selectedLang, setSelectedLang] = useState<string | null>(null);
   const [vttUrls, setVttUrls] = useState<Map<string, string>>(new Map());
@@ -335,7 +349,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     <div className={`video-container ${!showControls ? 'hide-cursor' : ''}`}>
       <video
         ref={videoRef}
-        src={metadata.videoUrl}
+        src={activeVideoUrl}
         className="video-element"
         autoPlay
         crossOrigin="anonymous"
@@ -358,19 +372,26 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
               mediaError.message.includes('HEVC')
             ));
 
-          if (isCodecOrFormatError) {
+          if (isCodecOrFormatError && metadata.h264Url && !isUsingH264Fallback) {
+            console.info(
+              `[BIO-006] HEVC unsupported by browser. Automatically falling back to H.264 stream:\n${metadata.h264Url}`
+            );
+            setActiveVideoUrl(metadata.h264Url);
+            setIsUsingH264Fallback(true);
+            setVideoError(null);
+          } else if (isCodecOrFormatError) {
             const bioMsg = 'BIO-006: Unsupported video codec (HEVC/H.265). This browser cannot play this video format.';
             console.error(
               `[BIO-006] Intercepted Video Error: Unsupported Codec (HEVC/H.265)\n` +
-              `URL: ${metadata.videoUrl}\n` +
+              `URL: ${activeVideoUrl}\n` +
               `MediaError Code: ${mediaError?.code ?? 'N/A'}\n` +
               `Details: ${mediaError?.message || 'NS_ERROR_DOM_MEDIA_NOT_SUPPORTED_ERR (0x80060003)'}\n` +
               `Fix: Transcode video stream to H.264 (AVC) using FFmpeg (-c:v libx264 / -c:v h264_qsv).`
             );
             setVideoError(bioMsg);
           } else {
-            const bioMsg = `BIO-007: Failed to load video stream (Error code ${mediaError.code}).`;
-            console.error(`[BIO-007] Video Playback Error:`, mediaError.message || mediaError);
+            const bioMsg = `BIO-007: Failed to load video stream (Error code ${mediaError?.code || 'unknown'}).`;
+            console.error(`[BIO-007] Video Playback Error:`, mediaError?.message || mediaError);
             setVideoError(bioMsg);
           }
           setIsBuffering(false);
@@ -392,7 +413,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       {/* Hidden video purely for rendering scrubbing thumbnails */}
       <video
         ref={hiddenVideoRef}
-        src={metadata.videoUrl}
+        src={activeVideoUrl}
         style={{ display: 'none' }}
         muted
         crossOrigin="anonymous"
@@ -484,6 +505,21 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
             </div>
             
             <div className="controls-right">
+              {isUsingH264Fallback && (
+                <div 
+                  className="h264-badge-container"
+                  onMouseEnter={() => setShowH264Tooltip(true)}
+                  onMouseLeave={() => setShowH264Tooltip(false)}
+                >
+                  {showH264Tooltip && (
+                    <div className={`h264-chat-bubble ${activeTheme}`}>
+                      This video has been transcoded from HEVC. Your browser does not support HEVC.
+                      <div className="h264-chat-bubble-arrow" />
+                    </div>
+                  )}
+                  <span className="h264-badge">H.264</span>
+                </div>
+              )}
               {vttUrls.size > 0 && (
                 <div className="cc-menu-container" ref={langMenuRef}>
                   {showLangMenu && (

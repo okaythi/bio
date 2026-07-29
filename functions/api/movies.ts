@@ -9,6 +9,7 @@ interface MovieItem {
   title: string;
   year: string;
   videoUrl: string;
+  h264Url?: string;
   subtitles: { lang: string; url: string }[];
 }
 
@@ -54,9 +55,19 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           id: folderName,
           title,
           year,
-          videoUrl: `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`,
+          videoUrl: "",
           subtitles: []
         });
+      }
+
+      const movie = moviesMap.get(folderName)!;
+      const fileName = parts[1];
+      const url = `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
+
+      if (fileName.includes(".h264.")) {
+        movie.h264Url = url;
+      } else {
+        movie.videoUrl = url;
       }
     }
 
