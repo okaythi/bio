@@ -84,7 +84,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
+  const username = (user?.profile?.display_name && user.profile.display_name.trim() !== '') 
+    ? user.profile.display_name 
+    : (user?.email ? user.email.split('@')[0] : 'User');
+
   if (!isOpen) return null;
+
 
   const handleAuthSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -245,8 +250,9 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <UserIcon size={24} color="#E50914" />
             <h2 style={{ fontSize: '1.4rem', fontWeight: 700, margin: 0 }}>
-              {user ? (user.profile?.display_name || user.email) : (isRegisterMode ? 'Create Account' : 'Sign In')}
+              {user ? username : (isRegisterMode ? 'Create Account' : 'Sign In')}
             </h2>
+
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <X size={20} color="#888" />
@@ -325,10 +331,17 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
           <div>
             {user ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ padding: '14px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                  <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '4px' }}>Email Address</div>
-                  <div style={{ fontWeight: 600 }}>{user.email}</div>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px' }}>Username</div>
+                    <div style={{ fontWeight: 600, color: '#E50914', fontSize: '1.05rem' }}>{username}</div>
+                  </div>
+                  <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px' }}>Email Address</div>
+                    <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
+                  </div>
                 </div>
+
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
                     <div style={{ fontSize: '0.8rem', color: '#888' }}>Role</div>

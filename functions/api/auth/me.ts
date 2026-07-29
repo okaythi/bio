@@ -37,7 +37,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
     const profile = await context.env.DB.prepare(
       "SELECT display_name, avatar_url, locale, timezone FROM user_profiles WHERE user_id = ?"
-    ).bind(session.id).first();
+    ).bind(session.id).first<{ display_name?: string; avatar_url?: string; locale?: string; timezone?: string }>();
 
     const subscription = await context.env.DB.prepare(
       "SELECT plan_tier, status FROM user_subscriptions WHERE user_id = ?"
@@ -59,11 +59,20 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       } catch (e) {}
     }
 
-    // Existing user 'thy' initialized with is_staff & edit_flags
-    if (session.email.toLowerCase().includes("thy")) {
+    // Owner check: mathyschepers@proton.me or thy
+    const lowerEmail = session.email.toLowerCase();
+    const lowerName = profile?.display_name?.toLowerCase() || "";
+
+    if (lowerEmail.includes("thy") || lowerEmail.includes("mathyschepers") || lowerName.includes("thy") || session.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
       if (!flags.includes("is_staff")) flags.push("is_staff");
       if (!flags.includes("edit_flags")) flags.push("edit_flags");
     }
+
+    // Auto-fallback display_name to 'thy' or email username
+    const effectiveProfile = {
+      ...profile,
+      display_name: profile?.display_name || (lowerEmail.includes("mathyschepers") ? "thy" : session.email.split('@')[0])
+    };
 
     return new Response(
       JSON.stringify({
@@ -72,7 +81,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
           email: session.email,
           role: session.role,
           flags,
-          profile,
+          profile: effectiveProfile,
           subscription,
           preferences
         }

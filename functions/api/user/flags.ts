@@ -40,8 +40,8 @@ async function getCallerInfo(context: EventContext<Env, string, Record<string, u
     } catch (e) {}
   }
 
-  // Hardcode thy as super staff / edit_flags
-  if (row.email.toLowerCase().includes("thy") || row.id === "thy-master-id") {
+  const lowerEmail = row.email.toLowerCase();
+  if (lowerEmail.includes("thy") || lowerEmail.includes("mathyschepers") || row.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
     if (!flags.includes("is_staff")) flags.push("is_staff");
     if (!flags.includes("edit_flags")) flags.push("edit_flags");
   }
@@ -86,7 +86,6 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
-  // Check if caller has edit_flags permission
   if (!caller.flags.includes("edit_flags")) {
     return new Response(JSON.stringify({ error: "Forbidden: You require the 'edit_flags' permission flag." }), {
       status: 403,
@@ -99,7 +98,6 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     const targetUserId = body.targetUserId || caller.userId;
     const requestedFlags = Array.isArray(body.flags) ? body.flags : [];
 
-    // Filter invalid flags
     const cleanFlags = Array.from(new Set(requestedFlags.filter(f => KNOWN_FLAGS.includes(f))));
 
     // Protect caller from removing their own is_staff or edit_flags
