@@ -267,7 +267,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     onChange={(e) => setPassword(e.target.value)}
                     style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
                   />
+                  {isRegisterMode && (
+                    <span style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px', display: 'block' }}>
+                      Must contain 6+ chars, 1 uppercase letter, 1 number, & 1 special char.
+                    </span>
+                  )}
                 </div>
+
                 <button 
                   type="submit" 
                   disabled={loading}

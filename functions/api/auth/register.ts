@@ -28,12 +28,34 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    if (password.length < 8) {
-      return new Response(JSON.stringify({ error: "Password must be at least 8 characters long." }), {
+    if (password.length < 6) {
+      return new Response(JSON.stringify({ error: "Password must be at least 6 characters long." }), {
         status: 400,
         headers: { "Content-Type": "application/json", ...corsHeaders }
       });
     }
+
+    if (!/[A-Z]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least 1 uppercase letter." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
+    if (!/[0-9]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least 1 number." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      return new Response(JSON.stringify({ error: "Password must contain at least 1 special character." }), {
+        status: 400,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
 
     const cleanEmail = email.trim().toLowerCase();
     const { hash, salt } = await hashPassword(password);
