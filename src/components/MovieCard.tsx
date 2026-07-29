@@ -44,9 +44,10 @@ export default function MovieCard({ movie, metadata, onClick }: MovieCardProps) 
       <div style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 10, display: 'flex', gap: '6px', alignItems: 'center' }}>
         {isLiked && (
           <div style={{
-            backgroundColor: 'rgba(229, 9, 20, 0.85)', borderRadius: '50%',
-            padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.6)'
+            backgroundColor: '#E50914', borderRadius: '50%',
+            width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: '2px solid white',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.6)'
           }}>
             <Heart size={14} color="white" fill="white" />
           </div>
