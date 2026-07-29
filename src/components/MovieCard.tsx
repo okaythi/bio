@@ -41,22 +41,22 @@ export default function MovieCard({ movie, metadata, onClick }: MovieCardProps) 
         className="movie-poster"
       />
 
-      {isLiked && (
-        <div style={{
-          position: 'absolute', top: '8px', right: '8px', zIndex: 5,
-          backgroundColor: 'rgba(229, 9, 20, 0.85)', borderRadius: '50%',
-          padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.6)'
-        }}>
-          <Heart size={14} color="white" fill="white" />
-        </div>
-      )}
-
-      {progress !== null && progress > 94.57 && (
-        <div className="movie-card-checkmark">
-          <CheckCircle size={32} color="white" fill="#E50914" />
-        </div>
-      )}
+      <div style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 10, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {isLiked && (
+          <div style={{
+            backgroundColor: 'rgba(229, 9, 20, 0.85)', borderRadius: '50%',
+            padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.6)'
+          }}>
+            <Heart size={14} color="white" fill="white" />
+          </div>
+        )}
+        {progress !== null && progress > 94.57 && (
+          <div style={{ filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.6))', display: 'flex' }}>
+            <CheckCircle size={28} color="white" fill="#E50914" />
+          </div>
+        )}
+      </div>
       {progress !== null && progress > 0 && (
         <div className="movie-card-progress-container">
           <div className="movie-card-progress-bar" style={{ width: `${progress}%` }}></div>
