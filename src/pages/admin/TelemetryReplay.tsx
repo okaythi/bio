@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { Play, Pause, Map, Video } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Play, Pause, Map, Video, Activity, MousePointer2 } from 'lucide-react';
 
 export default function TelemetryReplay() {
   const [users, setUsers] = useState<any[]>([]);
@@ -40,10 +41,10 @@ export default function TelemetryReplay() {
 
     if (mode === 'heatmap') {
       setIsPlaying(false);
-      ctx.fillStyle = 'rgba(255, 68, 68, 0.05)';
+      ctx.fillStyle = 'rgba(255, 42, 95, 0.1)';
       for (const pt of splines) {
         ctx.beginPath();
-        ctx.arc(pt.x, pt.y, 20, 0, Math.PI * 2);
+        ctx.arc(pt.x, pt.y, 25, 0, Math.PI * 2);
         ctx.fill();
       }
     } else {
@@ -65,10 +66,13 @@ export default function TelemetryReplay() {
     const pt = splines[currentT.current];
     
     if (pt) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.shadowColor = 'rgba(255, 42, 95, 0.8)';
+      ctx.shadowBlur = 10;
       ctx.beginPath();
-      ctx.arc(pt.x, pt.y, 5, 0, Math.PI * 2);
+      ctx.arc(pt.x, pt.y, 4, 0, Math.PI * 2);
       ctx.fill();
+      ctx.shadowBlur = 0;
     }
 
     currentT.current++;
@@ -86,64 +90,120 @@ export default function TelemetryReplay() {
   }, [isPlaying]);
 
   return (
-    <div>
-      <h2 style={{ fontSize: '2rem', marginBottom: '2rem' }}>Telemetry Replay</h2>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
+        <MousePointer2 size={36} color="#ff2a5f" />
+        <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, letterSpacing: '-1px' }}>Telemetry Replay</h2>
+      </div>
 
-      <div style={{ display: 'flex', gap: '2rem' }}>
-        <div style={{ width: '300px', background: '#111', padding: '1rem', borderRadius: '8px', overflowY: 'auto', maxHeight: '70vh' }}>
-          <h3 style={{ marginBottom: '1rem', color: '#ff4444' }}>Select User</h3>
-          {users.map(u => (
-            <div 
-              key={u.id}
-              onClick={() => loadTraces(u.id)}
-              style={{ padding: '0.5rem', background: selectedUserId === u.id ? '#333' : 'transparent', cursor: 'pointer', borderRadius: '4px' }}
-            >
-              {u.display_name || u.email}
-            </div>
-          ))}
+      <div style={{ display: 'flex', gap: '2rem', flex: 1, minHeight: 0 }}>
+        <div style={{ 
+          width: '350px', background: 'rgba(255, 255, 255, 0.02)', backdropFilter: 'blur(20px)',
+          borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.05)', overflowY: 'auto',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
+        }}>
+          <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'sticky', top: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
+            <h3 style={{ margin: 0, color: '#fff', fontSize: '1.2rem', fontWeight: 600 }}>Select User</h3>
+          </div>
+          <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {users.map(u => (
+              <div 
+                key={u.id}
+                onClick={() => loadTraces(u.id)}
+                style={{ 
+                  padding: '1rem', background: selectedUserId === u.id ? 'rgba(255,42,95,0.1)' : 'rgba(0,0,0,0.2)', 
+                  border: selectedUserId === u.id ? '1px solid rgba(255,42,95,0.3)' : '1px solid transparent',
+                  cursor: 'pointer', borderRadius: '12px', transition: 'all 0.2s', fontWeight: selectedUserId === u.id ? 600 : 400
+                }}
+              >
+                {u.display_name || u.email}
+              </div>
+            ))}
 
-          {selectedUserId && (
-            <>
-              <h3 style={{ marginTop: '2rem', marginBottom: '1rem', color: '#ff4444' }}>Traces</h3>
-              {traces.length === 0 ? <div style={{ color: '#666' }}>No traces</div> : null}
-              {traces.map((t, idx) => (
-                <div 
-                  key={t.key}
-                  onClick={() => setSelectedTrace(t)}
-                  style={{ padding: '0.5rem', background: selectedTrace?.key === t.key ? '#ff4444' : '#222', color: '#fff', cursor: 'pointer', borderRadius: '4px', marginBottom: '0.5rem', fontSize: '0.85rem' }}
-                >
-                  Trace {idx + 1}
-                </div>
-              ))}
-            </>
-          )}
+            <AnimatePresence>
+              {selectedUserId && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '2rem', marginBottom: '1rem', color: '#ff2a5f', padding: '0 0.5rem' }}>
+                    <Activity size={18} />
+                    <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Available Traces</h3>
+                  </div>
+                  {traces.length === 0 ? <div style={{ color: '#666', fontStyle: 'italic', padding: '0 0.5rem' }}>No telemetry data found.</div> : null}
+                  {traces.map((t, idx) => (
+                    <div 
+                      key={t.key}
+                      onClick={() => setSelectedTrace(t)}
+                      style={{ 
+                        padding: '1rem', background: selectedTrace?.key === t.key ? 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)' : 'rgba(0,0,0,0.3)', 
+                        color: '#fff', cursor: 'pointer', borderRadius: '12px', marginBottom: '0.5rem', fontSize: '0.9rem',
+                        boxShadow: selectedTrace?.key === t.key ? '0 5px 15px rgba(255,42,95,0.3)' : 'none',
+                        border: '1px solid rgba(255,255,255,0.05)', transition: 'all 0.2s'
+                      }}
+                    >
+                      Session Trace #{idx + 1}
+                    </div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
 
-        <div style={{ flex: 1, background: '#000', borderRadius: '8px', border: '1px solid #333', position: 'relative', overflow: 'hidden', height: '70vh' }}>
-          <div style={{ position: 'absolute', top: 10, left: 10, display: 'flex', gap: '0.5rem', zIndex: 10 }}>
+        <div style={{ 
+          flex: 1, background: 'rgba(0,0,0,0.6)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.05)', 
+          position: 'relative', overflow: 'hidden', boxShadow: 'inset 0 0 50px rgba(0,0,0,0.8)'
+        }}>
+          <div style={{ 
+            position: 'absolute', top: 20, left: 20, display: 'flex', gap: '0.5rem', zIndex: 10,
+            background: 'rgba(20,20,20,0.8)', padding: '0.5rem', borderRadius: '12px', backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.1)'
+          }}>
             <button 
               onClick={() => setMode('heatmap')}
-              style={{ background: mode === 'heatmap' ? '#ff4444' : '#333', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              style={{ 
+                background: mode === 'heatmap' ? 'rgba(255,42,95,0.2)' : 'transparent', 
+                color: mode === 'heatmap' ? '#ff2a5f' : '#888', 
+                border: mode === 'heatmap' ? '1px solid rgba(255,42,95,0.3)' : '1px solid transparent',
+                padding: '0.5rem 1.25rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                fontWeight: 600, transition: 'all 0.2s'
+              }}
             >
-              <Map size={16} /> Heatmap
+              <Map size={18} /> Heatmap
             </button>
             <button 
               onClick={() => setMode('video')}
-              style={{ background: mode === 'video' ? '#ff4444' : '#333', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              style={{ 
+                background: mode === 'video' ? 'rgba(255,42,95,0.2)' : 'transparent', 
+                color: mode === 'video' ? '#ff2a5f' : '#888', 
+                border: mode === 'video' ? '1px solid rgba(255,42,95,0.3)' : '1px solid transparent',
+                padding: '0.5rem 1.25rem', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                fontWeight: 600, transition: 'all 0.2s'
+              }}
             >
-              <Video size={16} /> Video Replay
+              <Video size={18} /> Replay
             </button>
             
             {mode === 'video' && (
               <button 
                 onClick={() => setIsPlaying(!isPlaying)}
-                style={{ background: '#333', border: 'none', color: '#fff', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '1rem' }}
+                style={{ 
+                  background: isPlaying ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', 
+                  border: 'none', color: '#fff', padding: '0.5rem 1.5rem', borderRadius: '8px', cursor: 'pointer', 
+                  display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: '0.5rem', fontWeight: 600,
+                  boxShadow: isPlaying ? 'none' : '0 5px 15px rgba(255,42,95,0.3)'
+                }}
               >
-                {isPlaying ? <Pause size={16} /> : <Play size={16} />}
+                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
                 {isPlaying ? 'Pause' : 'Play'}
               </button>
             )}
           </div>
+          
+          {!selectedTrace && (
+            <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#444', fontSize: '1.25rem', pointerEvents: 'none' }}>
+              Select a trace to visualize
+            </div>
+          )}
+          
           <canvas 
             ref={canvasRef} 
             width={1920} 
@@ -152,6 +212,6 @@ export default function TelemetryReplay() {
           />
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

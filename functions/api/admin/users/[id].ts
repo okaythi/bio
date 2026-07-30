@@ -1,41 +1,45 @@
 export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) => {
-  const userId = context.params.id as string;
-  const db = context.env.DB;
+  try {
+    const userId = context.params.id as string;
+    const db = context.env.DB;
 
-  const [
-    user,
-    profile,
-    subscription,
-    preferences,
-    notifications,
-    metadata,
-    sessions,
-    devices
-  ] = await Promise.all([
-    db.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first(),
-    db.prepare("SELECT * FROM user_profiles WHERE user_id = ?").bind(userId).first(),
-    db.prepare("SELECT * FROM user_subscriptions WHERE user_id = ?").bind(userId).first(),
-    db.prepare("SELECT * FROM user_preferences WHERE user_id = ?").bind(userId).first(),
-    db.prepare("SELECT * FROM notification_preferences WHERE user_id = ?").bind(userId).first(),
-    db.prepare("SELECT namespace, data_json FROM user_metadata_ext WHERE user_id = ?").bind(userId).all(),
-    db.prepare("SELECT * FROM sessions WHERE user_id = ?").bind(userId).all(),
-    db.prepare("SELECT * FROM user_devices WHERE user_id = ?").bind(userId).all()
-  ]);
+    const [
+      user,
+      profile,
+      subscription,
+      preferences,
+      notifications,
+      metadata,
+      sessions,
+      devices
+    ] = await Promise.all([
+      db.prepare("SELECT * FROM users WHERE id = ?").bind(userId).first(),
+      db.prepare("SELECT * FROM user_profiles WHERE user_id = ?").bind(userId).first(),
+      db.prepare("SELECT * FROM user_subscriptions WHERE user_id = ?").bind(userId).first(),
+      db.prepare("SELECT * FROM user_preferences WHERE user_id = ?").bind(userId).first(),
+      db.prepare("SELECT * FROM notification_preferences WHERE user_id = ?").bind(userId).first(),
+      db.prepare("SELECT namespace, data_json FROM user_metadata_ext WHERE user_id = ?").bind(userId).all(),
+      db.prepare("SELECT * FROM sessions WHERE user_id = ?").bind(userId).all(),
+      db.prepare("SELECT * FROM user_devices WHERE user_id = ?").bind(userId).all()
+    ]);
 
-  if (!user) {
-    return new Response(JSON.stringify({ error: "User not found." }), { status: 404 });
+    if (!user) {
+      return new Response(JSON.stringify({ error: "User not found." }), { status: 404, headers: { "Content-Type": "application/json" } });
+    }
+
+    return new Response(JSON.stringify({
+      user,
+      profile,
+      subscription,
+      preferences,
+      notifications,
+      metadata: metadata.results,
+      sessions: sessions.results,
+      devices: devices.results
+    }), { headers: { "Content-Type": "application/json" } });
+  } catch (error: any) {
+    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
-
-  return new Response(JSON.stringify({
-    user,
-    profile,
-    subscription,
-    preferences,
-    notifications,
-    metadata: metadata.results,
-    sessions: sessions.results,
-    devices: devices.results
-  }), { headers: { "Content-Type": "application/json" } });
 };
 
 export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) => {
