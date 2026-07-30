@@ -3,6 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Home from './pages/Home';
 import Watch from './pages/Watch';
 
+import { AdminProvider } from './context/AdminContext';
+import AdminLayout from './pages/admin/AdminLayout';
+import Dashboard from './pages/admin/Dashboard';
+import UserManagement from './pages/admin/UserManagement';
+import TelemetryReplay from './pages/admin/TelemetryReplay';
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -19,6 +25,12 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/watch/:id" element={<Watch />} />
+          
+          <Route path="/d/a" element={<AdminProvider><AdminLayout /></AdminProvider>}>
+            <Route index element={<Dashboard />} />
+            <Route path="users" element={<UserManagement />} />
+            <Route path="telemetry" element={<TelemetryReplay />} />
+          </Route>
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
