@@ -1,13 +1,16 @@
 import { hashPassword } from "./_crypto";
+import { verifyTurnstile } from "../_turnstile";
 
 export interface Env {
   DB: D1Database;
+  TURNSTILE_SECRET: string;
 }
 
 interface RegisterRequestBody {
   email?: string;
   password?: string;
   displayName?: string;
+  cfTurnstileResponse?: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -23,7 +26,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as RegisterRequestBody;
-    const { email, password, displayName } = body || {};
+    const { email, password, displayName, cfTurnstileResponse } = body || {};
+
+    const clientIp = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
+    const isHuman = await verifyTurnstile(cfTurnstileResponse, context.env.TURNSTILE_SECRET, clientIp);
+    if (!isHuman) {
+      return new Response(JSON.stringify({ error: "Invalid bot verification." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
 
     if (!email || !password || typeof email !== "string" || typeof password !== "string") {
       return new Response(JSON.stringify({ error: "Email and password are required." }), {

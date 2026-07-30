@@ -40,11 +40,11 @@ interface AuthContextType {
   flags: string[];
   isStaff: boolean;
   canEditFlags: boolean;
-  login: (email: string, pass: string) => Promise<void>;
-  register: (email: string, pass: string, displayName?: string) => Promise<void>;
+  login: (email: string, pass: string, turnstile?: string) => Promise<void>;
+  register: (email: string, pass: string, displayName?: string, turnstile?: string) => Promise<void>;
   logout: () => Promise<void>;
-  updateProfile: (data: Partial<UserProfile>) => Promise<void>;
-  updatePreferences: (newPrefs: Partial<UserPreferences>) => Promise<void>;
+  updateProfile: (data: Partial<UserProfile> & { cfTurnstileResponse?: string }) => Promise<void>;
+  updatePreferences: (newPrefs: Partial<UserPreferences> & { cfTurnstileResponse?: string }) => Promise<void>;
   updateExperiments: (experiments: string[]) => Promise<void>;
   updateUserFlags: (targetUserId: string, newFlags: string[]) => Promise<void>;
   toggleLike: (movieId: string) => Promise<boolean>;
@@ -123,11 +123,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     document.documentElement.setAttribute('data-theme', appliedTheme);
   }, [user?.preferences?.theme]);
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string, cfTurnstileResponse?: string) => {
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, cfTurnstileResponse })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Login failed');
@@ -139,16 +139,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await fetchUserExtras();
   };
 
-  const register = async (email: string, password: string, displayName?: string) => {
+  const register = async (email: string, password: string, displayName?: string, cfTurnstileResponse?: string) => {
     const res = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, displayName })
+      body: JSON.stringify({ email, password, displayName, cfTurnstileResponse })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Registration failed');
     telemetry.track('user_register', { userId: data.userId, email });
-    await login(email, password);
+    // Note: User must manually log in after registration since the single-use Turnstile token was consumed.
   };
 
   const logout = async () => {
@@ -162,7 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setExperiments(["2026-07_public_beta_v1", "2026-07_auto_play_next_video"]);
   };
 
-  const updateProfile = async (data: Partial<UserProfile>) => {
+  const updateProfile = async (data: Partial<UserProfile> & { cfTurnstileResponse?: string }) => {
     const res = await fetch('/api/user/profile', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -176,7 +176,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     telemetry.track('profile_update', data);
   };
 
-  const updatePreferences = async (newPrefs: Partial<UserPreferences>) => {
+  const updatePreferences = async (newPrefs: Partial<UserPreferences> & { cfTurnstileResponse?: string }) => {
     const res = await fetch('/api/user/preferences', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },

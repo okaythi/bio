@@ -1,8 +1,12 @@
+import { verifyTurnstile } from "../_turnstile";
+
 export interface Env {
   DB: D1Database;
+  TURNSTILE_SECRET: string;
 }
 
 interface ProfileRequestBody {
+  cfTurnstileResponse?: string;
   displayName?: string;
   display_name?: string;
   avatarUrl?: string;
@@ -42,6 +46,16 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as ProfileRequestBody;
+    
+    const clientIp = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
+    const isHuman = await verifyTurnstile(body.cfTurnstileResponse, context.env.TURNSTILE_SECRET, clientIp);
+    if (!isHuman) {
+      return new Response(JSON.stringify({ error: "Invalid bot verification." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
     const displayName = body.displayName ?? body.display_name ?? null;
     const avatarUrl = body.avatarUrl ?? body.avatar_url ?? null;
     const locale = body.locale ?? null;

@@ -1,8 +1,12 @@
+import { verifyTurnstile } from "../_turnstile";
+
 export interface Env {
   DB: D1Database;
+  TURNSTILE_SECRET: string;
 }
 
 interface PreferencesRequestBody {
+  cfTurnstileResponse?: string;
   theme?: string;
   defaultAudioLang?: string;
   default_audio_lang?: string;
@@ -72,6 +76,16 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as PreferencesRequestBody;
+
+    const clientIp = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
+    const isHuman = await verifyTurnstile(body.cfTurnstileResponse, context.env.TURNSTILE_SECRET, clientIp);
+    if (!isHuman) {
+      return new Response(JSON.stringify({ error: "Invalid bot verification." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
+
     const theme = body.theme ?? null;
     const defaultAudioLang = body.defaultAudioLang ?? body.default_audio_lang ?? null;
     const defaultSubtitleLang = body.defaultSubtitleLang ?? body.default_subtitle_lang ?? null;
