@@ -432,7 +432,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         controlsList="nodownload"
         onContextMenu={(e) => e.preventDefault()}
         autoPlay
-        crossOrigin="anonymous"
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onWaiting={() => setIsBuffering(true)}
