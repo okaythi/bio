@@ -258,7 +258,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
             </h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
-            <X size={20} color="#888" />
+            <X size={20} color="var(--text-muted)" />
           </button>
         </div>
 
@@ -268,7 +268,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => { setActiveTab('auth'); setError(null); }}
               style={{
                 background: activeTab === 'auth' ? '#E50914' : 'transparent',
-                color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
+                color: activeTab === 'auth' ? '#fff' : 'var(--foreground)', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
               }}
             >
               Account
@@ -277,7 +277,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => { setActiveTab('profile'); setError(null); }}
               style={{
                 background: activeTab === 'profile' ? '#E50914' : 'transparent',
-                color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
+                color: activeTab === 'profile' ? '#fff' : 'var(--foreground)', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
               }}
             >
               Profile
@@ -286,7 +286,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => { setActiveTab('preferences'); setError(null); }}
               style={{
                 background: activeTab === 'preferences' ? '#E50914' : 'transparent',
-                color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
+                color: activeTab === 'preferences' ? '#fff' : 'var(--foreground)', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem'
               }}
             >
               Preferences
@@ -295,7 +295,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               onClick={() => { setActiveTab('experiments'); setError(null); }}
               style={{
                 background: activeTab === 'experiments' ? '#E50914' : 'transparent',
-                color: '#fff', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem',
+                color: activeTab === 'experiments' ? '#fff' : 'var(--foreground)', border: 'none', padding: '6px 14px', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem',
                 display: 'flex', alignItems: 'center', gap: '4px'
               }}
             >
@@ -334,22 +334,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px' }}>Username</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Username</div>
                     <div style={{ fontWeight: 600, color: '#E50914', fontSize: '1.05rem' }}>{username}</div>
                   </div>
                   <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '2px' }}>Email Address</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Email Address</div>
                     <div style={{ fontWeight: 600, fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user.email}</div>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#888' }}>Role</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Role</div>
                     <div style={{ fontWeight: 600, textTransform: 'capitalize' }}>{user.role}</div>
                   </div>
                   <div style={{ flex: 1, padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#888' }}>Subscription</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Subscription</div>
                     <div style={{ fontWeight: 600, textTransform: 'uppercase', color: '#2ecc71' }}>
                       {user.subscription?.plan_tier || 'FREE'}
                     </div>
@@ -358,7 +358,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                 {userFlags.length > 0 && (
                   <div style={{ padding: '12px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '8px' }}>
-                    <div style={{ fontSize: '0.8rem', color: '#888', marginBottom: '6px' }}>Account Flags</div>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '6px' }}>Account Flags</div>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                       {userFlags.map(f => (
                         <span key={f} style={{ backgroundColor: 'rgba(229,9,20,0.2)', border: '1px solid #E50914', color: '#ff6b6b', padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 600 }}>
@@ -384,39 +384,39 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <form onSubmit={handleAuthSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 {isRegisterMode && (
                   <div>
-                    <label style={{ fontSize: '0.8rem', color: '#ccc', display: 'block', marginBottom: '4px' }}>Display Name</label>
+                    <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Display Name</label>
                     <input 
                       type="text" 
                       placeholder="Alex"
                       value={displayName}
                       onChange={(e) => setDisplayName(e.target.value)}
-                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
+                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
                     />
                   </div>
                 )}
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#ccc', display: 'block', marginBottom: '4px' }}>Email</label>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Email</label>
                   <input 
                     type="email" 
                     required 
                     placeholder="user@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: '0.8rem', color: '#ccc', display: 'block', marginBottom: '4px' }}>Password</label>
+                  <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Password</label>
                   <input 
                     type="password" 
                     required 
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
+                    style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
                   />
                   {isRegisterMode && (
-                    <span style={{ fontSize: '0.75rem', color: '#888', marginTop: '4px', display: 'block' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                       Must contain 6+ chars, 1 uppercase letter, 1 number, & 1 special char.
                     </span>
                   )}
@@ -433,7 +433,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   {loading ? 'Processing...' : (isRegisterMode ? 'Register' : 'Sign In')}
                 </button>
                 <div style={{ textAlign: 'center', marginTop: '8px', fontSize: '0.85rem' }}>
-                  <span style={{ color: '#888' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>
                     {isRegisterMode ? 'Already have an account?' : "Don't have an account?"}
                   </span>{' '}
                   <button 
@@ -452,22 +452,22 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {user && activeTab === 'profile' && (
           <form onSubmit={handleProfileSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ fontSize: '0.8rem', color: '#ccc', display: 'block', marginBottom: '4px' }}>Display Name</label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Display Name</label>
               <input 
                 type="text" 
                 value={displayName}
                 onChange={(e) => setDisplayName(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
               />
             </div>
             <div>
-              <label style={{ fontSize: '0.8rem', color: '#ccc', display: 'block', marginBottom: '4px' }}>Avatar Image URL</label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '4px' }}>Avatar Image URL</label>
               <input 
                 type="text" 
                 placeholder="https://..."
                 value={avatarUrl}
                 onChange={(e) => setAvatarUrl(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
               />
             </div>
             <button 
@@ -483,11 +483,11 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         {user && activeTab === 'preferences' && (
           <form onSubmit={handlePreferencesSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ fontSize: '0.8rem', color: '#ccc', display: 'block', marginBottom: '6px' }}>Theme</label>
+              <label style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px' }}>Theme</label>
               <select 
                 value={theme}
                 onChange={(e) => setTheme(e.target.value)}
-                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff' }}
+                style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
               >
                 <option value="dark">Dark Theme (Default)</option>
                 <option value="light">Light Theme</option>
@@ -499,7 +499,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Auto-play Next Video</div>
-                  <div style={{ fontSize: '0.75rem', color: '#888' }}>Automatically play next episode when video ends</div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Automatically play next episode when video ends</div>
                 </div>
                 <input 
                   type="checkbox" 
@@ -522,12 +522,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         {user && activeTab === 'experiments' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            <div style={{ fontSize: '0.8rem', color: '#aaa', lineHeight: '1.4' }}>
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
               Experiment Buckets control custom UI behaviors, dynamic layout variants, and algorithm feature flags assigned to your account.
             </div>
 
             <div style={{ backgroundColor: '#000', padding: '10px', borderRadius: '6px', border: '1px solid #333' }}>
-              <div style={{ fontSize: '0.75rem', color: '#888', marginBottom: '6px' }}>EXPERIMENTS: []</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '6px' }}>EXPERIMENTS: []</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {expList.map((exp) => {
                   const isSystemBucket = SYSTEM_BUCKETS.includes(exp);
@@ -548,7 +548,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     </span>
                   );
                 })}
-                {expList.length === 0 && <span style={{ fontSize: '0.8rem', color: '#666' }}>No active experiment buckets.</span>}
+                {expList.length === 0 && <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>No active experiment buckets.</span>}
               </div>
             </div>
 
@@ -558,7 +558,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 placeholder="e.g. 2026-07_auto_play_next_video"
                 value={expInput}
                 onChange={(e) => setExpInput(e.target.value)}
-                style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff', fontSize: '0.85rem' }}
+                style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', fontSize: '0.85rem' }}
               />
               <button 
                 onClick={handleAddExperiment}
@@ -599,12 +599,12 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                     placeholder="Search accounts..."
                     value={userSearch}
                     onChange={(e) => setUserSearch(e.target.value)}
-                    style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid #333', backgroundColor: '#222', color: '#fff', fontSize: '0.85rem' }}
+                    style={{ flex: 1, padding: '8px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)', fontSize: '0.85rem' }}
                   />
                 </div>
 
                 {loadingUsers ? (
-                  <div style={{ fontSize: '0.85rem', color: '#888' }}>Loading accounts...</div>
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Loading accounts...</div>
                 ) : (
                   <div style={{ display: 'flex', gap: '12px', minHeight: '180px' }}>
                     <div style={{ width: '45%', borderRight: '1px solid rgba(255,255,255,0.1)', paddingRight: '10px', overflowY: 'auto', maxHeight: '200px' }}>
@@ -632,7 +632,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
                     {selectedUser && (
                       <div style={{ flex: 1, paddingLeft: '6px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: '#e5e5e5' }}>
+                        <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--foreground)' }}>
                           Flags for {selectedUser.display_name || selectedUser.email.split('@')[0]}
                         </div>
 
@@ -678,7 +678,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 )}
               </div>
             ) : (
-              <div style={{ fontSize: '0.85rem', color: '#aaa' }}>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 You have Staff viewing privileges. Flag modification requires the <code>edit_flags</code> permission flag.
               </div>
             )}

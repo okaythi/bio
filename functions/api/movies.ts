@@ -12,6 +12,8 @@ interface MovieItem {
   h264Url?: string;
   subtitles: { lang: string; url: string }[];
   chapters?: { start: number; end: number; title: string }[];
+  audioChannels?: string;
+  spatialAudio?: boolean;
 }
 
 const SPIRITED_AWAY_CHAPTERS = [
@@ -71,6 +73,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         year = match[2];
       }
 
+      const isSpirited = folderName.includes("Spirited Away") || title.includes("Spirited Away");
+      const isLeviticus = folderName.includes("Leviticus") || title.includes("Leviticus");
+
       if (!moviesMap.has(folderName)) {
         moviesMap.set(folderName, {
           id: folderName,
@@ -78,7 +83,9 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           year,
           videoUrl: "",
           subtitles: [],
-          chapters: folderName.includes("Spirited Away") ? SPIRITED_AWAY_CHAPTERS : undefined
+          chapters: isSpirited ? SPIRITED_AWAY_CHAPTERS : undefined,
+          audioChannels: isSpirited ? "7.1" : (isLeviticus ? "5.1" : undefined),
+          spatialAudio: isSpirited ? true : undefined
         });
       }
 

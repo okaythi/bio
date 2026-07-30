@@ -102,7 +102,7 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
     if (invalidBucket) {
       return new Response(
         JSON.stringify({
-          error: `Unrecognized experiment bucket "${invalidBucket}". Valid buckets: ${VALID_EXPERIMENT_BUCKETS.join(", ")}`
+          error: `Unrecognized experiment bucket "${invalidBucket}".`
         }),
         { status: 400, headers: { "Content-Type": "application/json", ...corsHeaders } }
       );

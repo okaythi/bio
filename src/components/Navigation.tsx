@@ -57,7 +57,11 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
     <>
       <nav className={`nav-container ${isScrolled ? 'scrolled' : ''}`}>
         <div className="nav-left">
-          <span className="nav-logo">bio</span>
+          <svg className="nav-logo" width="58" height="28" viewBox="0 0 58 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 4h8.5c3.8 0 6.2 1.8 6.2 5 0 2.2-1.2 3.6-3 4.2 2.2.5 3.8 2.3 3.8 4.8 0 3.6-2.8 5.6-6.8 5.6H2V4zm8 7.8c2.2 0 3.4-1 3.4-2.8 0-1.7-1.2-2.7-3.4-2.7H5.6v5.5H10zm.6 8.2c2.4 0 3.8-1.1 3.8-3 0-1.9-1.4-3-3.8-3H5.6v6h5z" fill="#E50914"/>
+            <path d="M22 4h3.6v19.6H22V4z" fill="#E50914"/>
+            <path d="M30 13.8c0-5.8 4.2-10.2 10-10.2s10 4.4 10 10.2-4.2 10.2-10 10.2-10-4.4-10-10.2zm16.2 0c0-3.8-2.6-6.8-6.2-6.8s-6.2 3-6.2 6.8c0 3.8 2.6 6.8 6.2 6.8s6.2-3 6.2-6.8z" fill="#E50914"/>
+          </svg>
         </div>
         <div className="nav-right">
           {onSearchChange !== undefined ? (
@@ -112,8 +116,11 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
               />
             ) : (
               <div style={{
-                width: 32, height: 32, borderRadius: '4px', backgroundColor: user ? '#E50914' : '#333',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 600, fontSize: '0.85rem'
+                width: 32, height: 32, borderRadius: '4px',
+                backgroundColor: user ? '#E50914' : 'var(--card-bg)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                color: user ? '#fff' : 'var(--foreground)',
+                fontWeight: 600, fontSize: '0.85rem'
               }}>
                 {user ? (user.profile?.display_name?.[0] || user.email[0]).toUpperCase() : <UserIcon size={18} />}
               </div>

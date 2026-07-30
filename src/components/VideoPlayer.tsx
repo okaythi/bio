@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Subtitles } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Subtitles, Gauge, Keyboard, Type } from 'lucide-react';
 import type { MovieMetadata } from '../config/library';
 import { useAuth } from '../context/AuthContext';
 
@@ -13,6 +13,7 @@ const LANG_LABELS: Record<string, string> = {
   fr: 'Français',
   nl: 'Nederlands',
   'pt-BR': 'Português (BR)',
+  ja: 'Japanese',
 };
 
 const formatTime = (seconds: number) => {
@@ -27,12 +28,14 @@ const formatTime = (seconds: number) => {
 };
 
 export default function VideoPlayer({ metadata }: VideoPlayerProps) {
-  const { user } = useAuth();
+  const { user, updatePreferences } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
+  const speedMenuRef = useRef<HTMLDivElement>(null);
+  const subMenuRef = useRef<HTMLDivElement>(null);
   
   const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -59,6 +62,14 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [selectedLang, setSelectedLang] = useState<string | null>(null);
   const [vttUrls, setVttUrls] = useState<Map<string, string>>(new Map());
   const [showLangMenu, setShowLangMenu] = useState(false);
+
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+
+  const [subSize, setSubSize] = useState('3.2vh');
+  const [showSubMenu, setShowSubMenu] = useState(false);
+
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Thumbnail states
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
@@ -87,6 +98,30 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     }
   };
 
+  useEffect(() => {
+    const checkShortcuts = async () => {
+      if (user && user.preferences) {
+        let uiSettings: any = {};
+        try {
+          uiSettings = typeof user.preferences.ui_settings_json === 'string'
+            ? JSON.parse(user.preferences.ui_settings_json)
+            : (user.preferences.ui_settings_json || {});
+        } catch (e) {}
+        
+        if (!uiSettings.has_seen_shortcuts) {
+          setShowShortcuts(true);
+          setTimeout(() => setShowShortcuts(false), 8000);
+          if (updatePreferences) {
+            updatePreferences({
+              ui_settings_json: JSON.stringify({ ...uiSettings, has_seen_shortcuts: true })
+            }).catch(console.error);
+          }
+        }
+      }
+    };
+    checkShortcuts();
+  }, [user]);
+
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
 
@@ -112,6 +147,8 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         if (isPlaying) {
           setShowControls(false);
           setShowLangMenu(false);
+          setShowSpeedMenu(false);
+          setShowSubMenu(false);
         }
       }, timeoutDuration);
     };
@@ -179,13 +216,15 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
     if (metadata.subtitles && metadata.subtitles.length > 0) {
       metadata.subtitles.forEach(sub => {
-        const p = fetch(sub.url)
+        const fetchUrl = `${sub.url}?t=${Date.now()}`;
+        const p = fetch(fetchUrl)
           .then(r => r.ok ? r.text() : null)
           .then(srtText => {
             if (!srtText) return;
+            const isJapanese = sub.lang === 'ja';
             const vttText = "WEBVTT\n\n" + srtText
               .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2")
-              .replace(/(-->\s+\d{2}:\d{2}:\d{2}\.\d{3})/g, "$1 line:85%"); 
+              .replace(/(-->\s+\d{2}:\d{2}:\d{2}\.\d{3})/g, isJapanese ? "$1 line:82%" : "$1 line:85%");
             const blob = new Blob([vttText], { type: "text/vtt" });
             const url = URL.createObjectURL(blob);
             urls.set(sub.lang, url);
@@ -214,9 +253,10 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (langMenuRef.current && !langMenuRef.current.contains(event.target as Node)) {
-        setShowLangMenu(false);
-      }
+      const target = event.target as Node;
+      if (langMenuRef.current && !langMenuRef.current.contains(target)) setShowLangMenu(false);
+      if (speedMenuRef.current && !speedMenuRef.current.contains(target)) setShowSpeedMenu(false);
+      if (subMenuRef.current && !subMenuRef.current.contains(target)) setShowSubMenu(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -276,12 +316,41 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const toggleLangMenu = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowLangMenu(prev => !prev);
+    setShowSpeedMenu(false);
+    setShowSubMenu(false);
   };
 
   const selectLanguage = (lang: string | null) => {
     setSelectedLang(lang);
     setShowLangMenu(false);
   };
+
+  const toggleSpeedMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowSpeedMenu(prev => !prev);
+    setShowLangMenu(false);
+    setShowSubMenu(false);
+  };
+
+  const handleSpeedChange = (rate: number) => {
+    setPlaybackRate(rate);
+    if (videoRef.current) videoRef.current.playbackRate = rate;
+    setShowSpeedMenu(false);
+  };
+
+  const toggleSubMenu = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowSubMenu(prev => !prev);
+    setShowLangMenu(false);
+    setShowSpeedMenu(false);
+  };
+
+  const handleSubSizeChange = (size: string) => {
+    setSubSize(size);
+    setShowSubMenu(false);
+  };
+
+
 
   const handleTimeUpdate = () => {
     if (videoRef.current) {
@@ -356,7 +425,11 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   };
 
   return (
-    <div className={`video-container ${!showControls ? 'hide-cursor' : ''}`}>
+    <div 
+      className={`video-container ${!showControls ? 'hide-cursor' : ''}`} 
+      data-sub-lang={selectedLang}
+      style={{ '--sub-size': subSize } as React.CSSProperties}
+    >
       <video
         ref={videoRef}
         src={activeVideoUrl}
@@ -437,6 +510,13 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       {isBuffering && !videoError && (
         <div className="custom-spinner">
           <div className="spinner-ring"></div>
+        </div>
+      )}
+
+      {showShortcuts && (
+        <div className="shortcuts-toast">
+          <Keyboard size={18} />
+          <span>Keyboard Shortcuts: <b>Space</b> Play/Pause &nbsp;•&nbsp; <b>F</b> Fullscreen &nbsp;•&nbsp; <b>M</b> Mute &nbsp;•&nbsp; <b>C</b> Subtitles &nbsp;•&nbsp; <b>Arrows</b> Seek</span>
         </div>
       )}
 
@@ -541,6 +621,25 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                   <span className="h264-badge">H.264</span>
                 </div>
               )}
+
+              {/* Subtitle Settings Menu */}
+              {vttUrls.size > 0 && (
+                <div className="cc-menu-container" ref={subMenuRef}>
+                  {showSubMenu && (
+                    <div className="cc-dropdown">
+                      <div className="menu-header">Subtitle Size</div>
+                      <button className={subSize === '2.4vh' ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSubSizeChange('2.4vh'); }}>Small</button>
+                      <button className={subSize === '3.2vh' ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSubSizeChange('3.2vh'); }}>Medium</button>
+                      <button className={subSize === '4.2vh' ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSubSizeChange('4.2vh'); }}>Large</button>
+                    </div>
+                  )}
+                  <button onClick={toggleSubMenu} className={`cc-button ${showSubMenu ? 'active' : ''}`}>
+                    <Type size={26} color="white" />
+                  </button>
+                </div>
+              )}
+
+              {/* Subtitle Lang Menu */}
               {vttUrls.size > 0 && (
                 <div className="cc-menu-container" ref={langMenuRef}>
                   {showLangMenu && (
@@ -570,6 +669,24 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                   </button>
                 </div>
               )}
+              
+              {/* Playback Speed Menu */}
+              <div className="cc-menu-container" ref={speedMenuRef}>
+                {showSpeedMenu && (
+                  <div className="cc-dropdown">
+                    <button className={playbackRate === 0.5 ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSpeedChange(0.5); }}>0.5x</button>
+                    <button className={playbackRate === 0.75 ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSpeedChange(0.75); }}>0.75x</button>
+                    <button className={playbackRate === 1 ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSpeedChange(1); }}>1x (Normal)</button>
+                    <button className={playbackRate === 1.25 ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSpeedChange(1.25); }}>1.25x</button>
+                    <button className={playbackRate === 1.5 ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSpeedChange(1.5); }}>1.5x</button>
+                    <button className={playbackRate === 2 ? 'lang-active' : ''} onClick={(e) => { e.stopPropagation(); handleSpeedChange(2); }}>2x</button>
+                  </div>
+                )}
+                <button onClick={toggleSpeedMenu} className={`cc-button ${showSpeedMenu ? 'active' : ''}`}>
+                  <Gauge size={26} color="white" />
+                </button>
+              </div>
+
               <button onClick={toggleFullscreen}>
                 <Maximize size={28} color="white" />
               </button>

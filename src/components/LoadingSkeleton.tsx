@@ -1,11 +1,31 @@
 import { motion } from 'framer-motion';
 
 export default function LoadingSkeleton() {
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  };
+
   return (
-    <div className="skeleton-container">
-      <div className="skeleton-hero" />
-      <div className="skeleton-row-title" />
-      <div className="skeleton-row">
+    <motion.div 
+      className="skeleton-container"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div className="skeleton-hero" variants={itemVariants} />
+      <motion.div className="skeleton-row-title" variants={itemVariants} />
+      <motion.div className="skeleton-row" variants={itemVariants}>
         {[1, 2, 3, 4, 5].map((i) => (
           <motion.div 
             key={i}
@@ -14,7 +34,7 @@ export default function LoadingSkeleton() {
             transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
           />
         ))}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
