@@ -18,6 +18,7 @@ queue = "omni-telemetry-queue"
 
 [[analytics_engine_datasets]]
 binding = "TELEMETRY_ANALYTICS"
+dataset = "omni_telemetry_dataset"
 
 [ai]
 binding = "AI"
