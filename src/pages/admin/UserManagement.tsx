@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, BrainCircuit, Trash2, Shield, User as UserIcon, MonitorSmartphone } from 'lucide-react';
+import { Loader2, BrainCircuit, Trash2, Shield, User as UserIcon, MonitorSmartphone, Users } from 'lucide-react';
 
 export default function UserManagement() {
   const [users, setUsers] = useState<any[]>([]);
