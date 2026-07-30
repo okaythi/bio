@@ -89,6 +89,16 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
+
+  // When video source falls back to H.264, re-initialize media engine and trigger auto-play
+  useEffect(() => {
+    if (isUsingH264Fallback && videoRef.current) {
+      videoRef.current.load();
+      videoRef.current.play().catch(err => {
+        console.warn('[BIO-006] Auto-play after H.264 fallback prevented by browser:', err);
+      });
+    }
+  }, [activeVideoUrl, isUsingH264Fallback]);
   useEffect(() => { selectedLangRef.current = selectedLang; }, [selectedLang]);
 
   useEffect(() => {
