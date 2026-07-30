@@ -350,19 +350,17 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
       if (!isNaN(total) && total > 0) {
         if (!hasSeekedRef.current) {
-          // Restore progress on the first reliable time tick (prevents missed onCanPlay events)
           hasSeekedRef.current = true;
           const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
           if (savedStr) {
             const savedPct = parseFloat(savedStr);
             if (savedPct > 0 && savedPct <= 94.57) {
               videoRef.current.currentTime = (savedPct / 100) * total;
-              return; // skip saving on this exact tick
+              return;
             }
           }
         }
 
-        // Normal saving behavior
         const pct = (current / total) * 100;
         const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
         const savedPct = savedStr ? parseFloat(savedStr) : 0;
@@ -415,7 +413,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     e.stopPropagation();
     if (!progressBarRef.current || !videoRef.current) return;
     
-    // Fallback: If duration is unavailable, we cannot reliably seek by percentage.
     const duration = videoRef.current.duration;
     if (isNaN(duration) || duration === 0) return;
 
