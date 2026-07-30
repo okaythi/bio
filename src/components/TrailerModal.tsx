@@ -148,10 +148,17 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
           </div>
 
           <div className="modal-actions">
-            <button className="play-button" onClick={() => navigate(`/watch/${metadata.id}`)}>
-              <Play size={24} fill="black" color="black" />
-              <span>Play</span>
-            </button>
+            {user ? (
+              <button className="play-button" onClick={() => navigate(`/watch/${metadata.id}`)}>
+                <Play size={24} fill="black" color="black" />
+                <span>Play</span>
+              </button>
+            ) : (
+              <button className="play-button" onClick={() => alert("Please sign in to watch this title.")}>
+                <Play size={24} fill="black" color="black" />
+                <span>Sign In to Watch</span>
+              </button>
+            )}
 
             {/* Interactive Like/ThumbsUp Button connected to D1 */}
             <button 

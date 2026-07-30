@@ -1,4 +1,4 @@
-const R2_CDN = "https://cdn.bio.sudothy.me";
+const R2_CDN = "/api/media";
 
 export interface Env {
   movies: R2Bucket;
