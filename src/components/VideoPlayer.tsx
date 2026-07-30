@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Play, Pause, Volume2, VolumeX, Maximize, Subtitles, Gauge, Keyboard, Type } from 'lucide-react';
 import type { MovieMetadata } from '../config/library';
 import { useAuth } from '../context/AuthContext';
+import { telemetry } from '../services/telemetry';
+import { globalTracker } from '../lib/telemetry/OmniTracker';
 
 interface VideoPlayerProps {
   metadata: MovieMetadata;
@@ -28,7 +30,7 @@ const formatTime = (seconds: number) => {
 };
 
 export default function VideoPlayer({ metadata }: VideoPlayerProps) {
-  const { user, updatePreferences } = useAuth();
+  const { user, updatePreferences, watchHistory } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
@@ -349,12 +351,22 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       if (!isNaN(total) && total > 0) {
         if (!hasSeekedRef.current) {
           hasSeekedRef.current = true;
-          const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
-          if (savedStr) {
-            const savedPct = parseFloat(savedStr);
+          
+          const historyItem = watchHistory?.find(h => h.movie_id === metadata.id);
+          if (historyItem && historyItem.progress_seconds > 0) {
+            const savedPct = (historyItem.progress_seconds / total) * 100;
             if (savedPct > 0 && savedPct <= 94.57) {
-              videoRef.current.currentTime = (savedPct / 100) * total;
+              videoRef.current.currentTime = historyItem.progress_seconds;
               return;
+            }
+          } else {
+            const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
+            if (savedStr) {
+              const savedPct = parseFloat(savedStr);
+              if (savedPct > 0 && savedPct <= 94.57) {
+                videoRef.current.currentTime = (savedPct / 100) * total;
+                return;
+              }
             }
           }
         }
@@ -388,6 +400,69 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       setShowSkipIntro(false);
     }
   };
+
+  // Periodic Heartbeat & Telemetry
+  useEffect(() => {
+    if (!user) return; // Only sync for logged in users
+    
+    const sendProgress = () => {
+      if (!videoRef.current) return;
+      const current = videoRef.current.currentTime;
+      const total = videoRef.current.duration;
+      if (isNaN(total) || total <= 0) return;
+      
+      const payload = {
+        movieId: metadata.id,
+        progressSeconds: current,
+        durationSeconds: total
+      };
+      
+      fetch('/api/user/watch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }).catch(() => {});
+      
+      telemetry.track('video_progress_heartbeat', payload);
+    };
+
+    const interval = setInterval(() => {
+      if (isPlaying) sendProgress();
+    }, 10000);
+    
+    return () => clearInterval(interval);
+  }, [isPlaying, metadata.id, user]);
+
+  // OmniTracker & Beacon
+  useEffect(() => {
+    if (!videoRef.current) return;
+    
+    const sendBeacon = (progress: number, duration: number) => {
+      if (!user || isNaN(duration) || duration <= 0) return;
+      const payload = JSON.stringify({
+        movieId: metadata.id,
+        progressSeconds: progress,
+        durationSeconds: duration
+      });
+      // Reliable delivery for abandonment
+      fetch('/api/user/watch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true
+      }).catch(() => {});
+    };
+    
+    globalTracker.attachVideoTracker(metadata.id, videoRef.current, sendBeacon);
+    
+    const handlePageHide = () => {
+       if (videoRef.current) {
+          sendBeacon(videoRef.current.currentTime, videoRef.current.duration);
+       }
+    };
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, [metadata.id, user]);
 
   // Thumbnail Scrubbing Logic
   const handleProgressMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {

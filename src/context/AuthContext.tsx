@@ -37,6 +37,7 @@ interface AuthContextType {
   loading: boolean;
   experiments: string[];
   likedMovies: string[];
+  watchHistory: any[];
   flags: string[];
   isStaff: boolean;
   canEditFlags: boolean;
@@ -56,6 +57,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [experiments, setExperiments] = useState<string[]>(["2026-07_public_beta_v1", "2026-07_auto_play_next_video"]);
   const [likedMovies, setLikedMovies] = useState<string[]>([]);
+  const [watchHistory, setWatchHistory] = useState<any[]>([]);
   const [flags, setFlags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -106,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (watchRes.ok) {
         const watchData = await watchRes.json();
         if (Array.isArray(watchData.likedMovies)) setLikedMovies(watchData.likedMovies);
+        if (Array.isArray(watchData.history)) setWatchHistory(watchData.history);
       }
     } catch (e) {}
   };
@@ -159,6 +162,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
     setFlags([]);
     setLikedMovies([]);
+    setWatchHistory([]);
     setExperiments(["2026-07_public_beta_v1", "2026-07_auto_play_next_video"]);
   };
 
@@ -239,6 +243,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       loading,
       experiments,
       likedMovies,
+      watchHistory,
       flags,
       isStaff,
       canEditFlags,
