@@ -21,8 +21,9 @@ export default function TurnstileWidget({
     let widgetId: string | undefined;
 
     const renderWidget = () => {
-      if (containerRef.current && window.turnstile && !containerRef.current.hasChildNodes()) {
+      if (containerRef.current && window.turnstile) {
         try {
+          containerRef.current.innerHTML = ''; // Ensure clean state for StrictMode
           widgetId = window.turnstile.render(containerRef.current, {
             sitekey,
             action,
