@@ -30,8 +30,6 @@ const formatTime = (seconds: number) => {
 export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const { user, updatePreferences } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const hiddenVideoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
   const speedMenuRef = useRef<HTMLDivElement>(null);
@@ -393,7 +391,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   // Thumbnail Scrubbing Logic
   const handleProgressMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!progressBarRef.current || !videoRef.current || !hiddenVideoRef.current) return;
+    if (!progressBarRef.current || !videoRef.current) return;
     const rect = progressBarRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const percentage = Math.max(0, Math.min(1, x / rect.width));
@@ -402,11 +400,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     setHoverX(x);
     setHoverTime(time);
     setIsHoveringProgress(true);
-
-    // Seek the hidden video to render thumbnail
-    if (Math.abs(hiddenVideoRef.current.currentTime - time) > 1) { // Debounce seeks slightly
-      hiddenVideoRef.current.currentTime = time;
-    }
   };
 
   const handleProgressClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -424,14 +417,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     setProgress(percentage * 100);
   };
 
-  const handleHiddenVideoSeeked = () => {
-    if (hiddenVideoRef.current && canvasRef.current) {
-      const ctx = canvasRef.current.getContext('2d');
-      if (ctx) {
-        ctx.drawImage(hiddenVideoRef.current, 0, 0, 160, 90);
-      }
-    }
-  };
+
 
   return (
     <div 
@@ -507,17 +493,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
           />
         ))}
       </video>
-
-      {/* Hidden video purely for rendering scrubbing thumbnails */}
-      <video
-        ref={hiddenVideoRef}
-        src={activeVideoUrl}
-        style={{ display: 'none' }}
-        muted
-        crossOrigin="anonymous"
-        onContextMenu={(e) => e.preventDefault()}
-        onSeeked={handleHiddenVideoSeeked}
-      />
       
       {isBuffering && !videoError && (
         <div className="custom-spinner">
@@ -575,7 +550,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                 className="thumbnail-preview"
                 style={{ left: `${hoverX}px` }}
               >
-                <canvas ref={canvasRef} width="160" height="90" className="thumbnail-canvas" />
                 <span className="thumbnail-time">{formatTime(hoverTime)}</span>
               </div>
             )}
