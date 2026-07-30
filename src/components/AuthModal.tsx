@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { X, User as UserIcon, FlaskConical, LogOut, Shield, Lock, Search } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import TurnstileWidget from './TurnstileWidget';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -429,7 +430,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   )}
                 </div>
 
-                <div className="cf-turnstile" data-sitekey="0x4AAAAAAEB2_RaEon2bhHxu" data-action="turnstile-spin-v2" style={{ marginTop: '4px' }}></div>
+                <TurnstileWidget />
 
                 <button 
                   type="submit" 
@@ -479,7 +480,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
               />
             </div>
-            <div className="cf-turnstile" data-sitekey="0x4AAAAAAEB2_RaEon2bhHxu" data-action="turnstile-spin-v2" style={{ marginTop: '4px' }}></div>
+            <TurnstileWidget />
             <button 
               type="submit" 
               disabled={loading}
@@ -520,7 +521,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
               </div>
             )}
 
-            <div className="cf-turnstile" data-sitekey="0x4AAAAAAEB2_RaEon2bhHxu" data-action="turnstile-spin-v2" style={{ marginTop: '4px' }}></div>
+            <TurnstileWidget />
 
             <button 
               type="submit" 
