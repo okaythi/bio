@@ -1,12 +1,15 @@
 import { verifyPassword } from "./_crypto";
+import { verifyTurnstile } from "../_turnstile";
 
 export interface Env {
   DB: D1Database;
+  TURNSTILE_SECRET: string;
 }
 
 interface LoginRequestBody {
   email?: string;
   password?: string;
+  cfTurnstileResponse?: string;
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
@@ -22,7 +25,16 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
   try {
     const body = (await context.request.json()) as LoginRequestBody;
-    const { email, password } = body || {};
+    const { email, password, cfTurnstileResponse } = body || {};
+
+    const clientIp = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
+    const isHuman = await verifyTurnstile(cfTurnstileResponse, context.env.TURNSTILE_SECRET, clientIp);
+    if (!isHuman) {
+      return new Response(JSON.stringify({ error: "Invalid bot verification." }), {
+        status: 403,
+        headers: { "Content-Type": "application/json", ...corsHeaders }
+      });
+    }
 
     if (!email || !password) {
       return new Response(JSON.stringify({ error: "Email and password are required." }), {
@@ -54,7 +66,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const sessionId = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
-    const clientIp = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
     const userAgent = context.request.headers.get("User-Agent") || "";
 
     await context.env.DB.prepare(

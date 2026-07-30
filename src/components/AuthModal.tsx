@@ -97,21 +97,24 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
   if (!isOpen) return null;
 
-  const handleAuthSubmit = async (e: React.FormEvent) => {
+  const handleAuthSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const token = new FormData(e.currentTarget).get('cf-turnstile-response') as string | undefined;
+    
     setError(null);
     setSuccess(null);
     setLoading(true);
 
     try {
       if (isRegisterMode) {
-        await register(email, password, displayName);
-        setSuccess('Account created successfully!');
+        await register(email, password, displayName, token);
+        setSuccess('Account created successfully! Please sign in.');
+        setIsRegisterMode(false);
       } else {
-        await login(email, password);
+        await login(email, password, token);
         setSuccess('Logged in successfully!');
+        onClose();
       }
-      onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -119,13 +122,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const handleProfileSubmit = async (e: React.FormEvent) => {
+  const handleProfileSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const token = new FormData(e.currentTarget).get('cf-turnstile-response') as string | undefined;
+
     setError(null);
     setSuccess(null);
     setLoading(true);
     try {
-      await updateProfile({ display_name: displayName, avatar_url: avatarUrl });
+      await updateProfile({ display_name: displayName, avatar_url: avatarUrl, cfTurnstileResponse: token });
       setSuccess('Profile updated successfully!');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -134,13 +139,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     }
   };
 
-  const handlePreferencesSubmit = async (e: React.FormEvent) => {
+  const handlePreferencesSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    const token = new FormData(e.currentTarget).get('cf-turnstile-response') as string | undefined;
+
     setError(null);
     setSuccess(null);
     setLoading(true);
     try {
-      await updatePreferences({ theme, auto_play_next: autoPlay });
+      await updatePreferences({ theme, auto_play_next: autoPlay, cfTurnstileResponse: token });
       setSuccess('Preferences saved!');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
@@ -422,6 +429,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   )}
                 </div>
 
+                <div className="cf-turnstile" data-sitekey="0x4AAAAAAEB2_RaEon2bhHxu" data-action="turnstile-spin-v2" style={{ marginTop: '4px' }}></div>
+
                 <button 
                   type="submit" 
                   disabled={loading}
@@ -470,6 +479,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid var(--text-muted)', backgroundColor: 'var(--card-bg)', color: 'var(--foreground)' }}
               />
             </div>
+            <div className="cf-turnstile" data-sitekey="0x4AAAAAAEB2_RaEon2bhHxu" data-action="turnstile-spin-v2" style={{ marginTop: '4px' }}></div>
             <button 
               type="submit" 
               disabled={loading}
@@ -509,6 +519,8 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 />
               </div>
             )}
+
+            <div className="cf-turnstile" data-sitekey="0x4AAAAAAEB2_RaEon2bhHxu" data-action="turnstile-spin-v2" style={{ marginTop: '4px' }}></div>
 
             <button 
               type="submit" 
