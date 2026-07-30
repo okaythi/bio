@@ -16,9 +16,7 @@ database_id = "ac9e28c6-ac20-4c43-893b-d3a41d687d47"
 binding = "TELEMETRY_QUEUE"
 queue = "omni-telemetry-queue"
 
-[[analytics_engine_datasets]]
-binding = "TELEMETRY_ANALYTICS"
-dataset = "omni_telemetry_dataset"
+
 
 [ai]
 binding = "AI"
