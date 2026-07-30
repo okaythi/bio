@@ -1,3 +1,6 @@
+import { authenticateSession } from '../../lib/auth';
+import { getUserFlags, D1Database } from '../../lib/db';
+
 export interface Env {
   DB: D1Database;
 }
@@ -20,36 +23,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const cookieHeader = context.request.headers.get("Cookie") || "";
-  const match = cookieHeader.match(/session_id=([^;]+)/);
-  const sessionId = match ? match[1] : null;
+  const { user: caller, error } = await authenticateSession(context.request, context.env.DB);
 
-  if (!sessionId) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
+  if (error || !caller) {
+    return new Response(JSON.stringify({ error: error || "Unauthorized" }), { status: 401, headers: corsHeaders });
   }
 
-  const caller = await context.env.DB.prepare(`
-    SELECT users.id, users.email 
-    FROM sessions 
-    JOIN users ON sessions.user_id = users.id 
-    WHERE sessions.id = ? AND sessions.expires_at > CURRENT_TIMESTAMP
-  `).bind(sessionId).first<{ id: string; email: string }>();
-
-  if (!caller) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: corsHeaders });
-  }
-
-  const flagsRow = await context.env.DB.prepare(
-    "SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'"
-  ).bind(caller.id).first<{ data_json: string }>();
-
-  let callerFlags: string[] = [];
-  if (flagsRow?.data_json) {
-    try {
-      const parsed = JSON.parse(flagsRow.data_json);
-      if (Array.isArray(parsed.flags)) callerFlags = parsed.flags;
-    } catch (e) {}
-  }
+  const callerFlags = await getUserFlags(context.env.DB, caller.id);
 
   if (caller.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
     if (!callerFlags.includes("is_staff")) callerFlags.push("is_staff");
@@ -69,17 +49,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const userList: UserListItem[] = [];
   for (const u of (users || [])) {
-    const userFlagsRow = await context.env.DB.prepare(
-      "SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'"
-    ).bind(u.id).first<{ data_json: string }>();
-
-    let uFlags: string[] = [];
-    if (userFlagsRow?.data_json) {
-      try {
-        const parsed = JSON.parse(userFlagsRow.data_json);
-        if (Array.isArray(parsed.flags)) uFlags = parsed.flags;
-      } catch (e) {}
-    }
+    const uFlags = await getUserFlags(context.env.DB, u.id);
 
     if (u.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
       if (!uFlags.includes("is_staff")) uFlags.push("is_staff");
