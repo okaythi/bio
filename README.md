@@ -1,6 +1,6 @@
 # > bio
 
-A highly customized React SPA built with Vite, deployed to Cloudflare Pages.
+A highly customized React SPA built with Vite, deployed to Cloudflare Pages
 
 ## Infrastructure & Stack
 
