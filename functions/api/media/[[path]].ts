@@ -61,11 +61,23 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("etag", object.httpEtag);
+  headers.set("Accept-Ranges", "bytes");
+
+  if (rangeHeader !== null && (object as any).range) {
+    const range = (object as any).range;
+    const offset = range.offset;
+    const length = range.length;
+    const end = offset + length - 1;
+    headers.set("Content-Range", `bytes ${offset}-${end}/${object.size}`);
+    headers.set("Content-Length", length.toString());
+  } else {
+    headers.set("Content-Length", object.size.toString());
+  }
   
   for (const [k, v] of Object.entries(corsHeaders)) {
     headers.set(k, v);
   }
 
-  const status = object.body ? (rangeHeader !== null ? 206 : 200) : 304;
+  const status = object.body ? (rangeHeader !== null && (object as any).range ? 206 : 200) : 304;
   return new Response(object.body, { headers, status });
 };
