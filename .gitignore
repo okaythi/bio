@@ -38,3 +38,4 @@ cors.json
 .env
 .env.*
 .wrangler/
+.dev.vars
