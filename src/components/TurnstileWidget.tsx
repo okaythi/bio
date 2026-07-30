@@ -12,7 +12,7 @@ interface TurnstileWidgetProps {
 }
 
 export default function TurnstileWidget({ 
-  sitekey = "0x4AAAAAAEB2_RaEon2bhHxu", 
+  sitekey = import.meta.env.VITE_TURNSTILE_SITEKEY || "", 
   action = "turnstile-spin-v2" 
 }: TurnstileWidgetProps) {
   const containerRef = useRef<HTMLDivElement>(null);
