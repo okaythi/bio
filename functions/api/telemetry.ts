@@ -1,5 +1,8 @@
+import { authenticateSession } from '../lib/auth';
+import { insertTelemetryBatch } from '../lib/db';
+
 export interface Env {
-  DB: D1Database;
+  DB: any;
 }
 
 interface TelemetryEventPayload {
@@ -16,17 +19,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   };
 
   try {
-    const cookieHeader = context.request.headers.get("Cookie") || "";
-    const match = cookieHeader.match(/session_id=([^;]+)/);
-    const sessionId = match ? match[1] : null;
-
-    let userId: string | null = null;
-    if (sessionId) {
-      const session = await context.env.DB.prepare(
-        "SELECT user_id FROM sessions WHERE id = ? AND expires_at > CURRENT_TIMESTAMP"
-      ).bind(sessionId).first<{ user_id: string }>();
-      if (session) userId = session.user_id;
-    }
+    const { user, sessionId } = await authenticateSession(context.request, context.env.DB);
+    const userId = user ? user.id : null;
 
     const ipAddress = context.request.headers.get("CF-Connecting-IP") || context.request.headers.get("x-forwarded-for") || "";
     const country = context.request.headers.get("CF-IPCountry") || "UNKNOWN";
@@ -34,22 +28,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const body = (await context.request.json()) as TelemetryEventPayload | TelemetryEventPayload[];
     const events = Array.isArray(body) ? body : [body];
 
-    const stmt = context.env.DB.prepare(`
-      INSERT INTO user_telemetry_events 
-      (id, user_id, session_id, event_type, event_data_json, device_info_json, ip_address, country)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    const batchStmts = events.map((evt) => {
-      const eventId = crypto.randomUUID();
-      const eventType = evt.type || "unknown";
-      const eventDataJson = JSON.stringify(evt.data || {});
-      const deviceInfoJson = JSON.stringify(evt.device || {});
-
-      return stmt.bind(eventId, userId, sessionId, eventType, eventDataJson, deviceInfoJson, ipAddress, country);
-    });
-
-    await context.env.DB.batch(batchStmts);
+    await insertTelemetryBatch(context.env.DB, events, userId, sessionId, ipAddress, country);
 
     return new Response(JSON.stringify({ success: true, count: events.length }), {
       headers: { "Content-Type": "application/json", ...corsHeaders }

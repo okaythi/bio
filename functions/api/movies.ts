@@ -16,25 +16,7 @@ interface MovieItem {
   spatialAudio?: boolean;
 }
 
-const SPIRITED_AWAY_CHAPTERS = [
-  { start: 0, end: 419.294, title: "Opening Credits / The Middle of Nowhere" },
-  { start: 419.294, end: 798.965, title: "It's Just A Dream" },
-  { start: 798.965, end: 1227.56, title: "Finding Work At The Bathhouse" },
-  { start: 1227.56, end: 1716.048, title: "Meeting Kamaji" },
-  { start: 1716.048, end: 2088.086, title: "Sen's New Life" },
-  { start: 2088.086, end: 2474.097, title: "Meeting Yubaba" },
-  { start: 2474.097, end: 3095.509, title: "A Strange Visit To The Nursery" },
-  { start: 3095.509, end: 3482.896, title: "We Have An Intruder" },
-  { start: 3482.896, end: 3999.621, title: "Guardian of the Great River" },
-  { start: 3999.621, end: 4600.137, title: "A Monster Called 'No Face'" },
-  { start: 4600.137, end: 5094.84, title: "The Golden Seal" },
-  { start: 5094.84, end: 5478.89, title: "The Train To Swamp Bottom" },
-  { start: 5478.89, end: 5886.005, title: "Leaving the Bath House" },
-  { start: 5886.005, end: 6318.729, title: "What Did You Do With My Baby!" },
-  { start: 6318.729, end: 6913.907, title: "Finding The Way Home" },
-  { start: 6913.907, end: 7253.000, title: "One Final Test" },
-  { start: 7253.000, end: 7484.765, title: "End Credits" }
-];
+import { SPIRITED_AWAY_CHAPTERS } from '../config/movies';
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
@@ -56,7 +38,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     const objects = await bucket.list();
     const moviesMap = new Map<string, MovieItem>();
 
-    // Pass 1: Scan video files and create movie entries with empty subtitles arrays
     for (const obj of objects.objects) {
       if (!obj.key.endsWith(".mp4") && !obj.key.endsWith(".mkv")) continue;
 
@@ -100,7 +81,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
     }
 
-    // Pass 2: Scan all objects for .srt files and populate subtitles arrays
     for (const obj of objects.objects) {
       if (!obj.key.endsWith(".srt")) continue;
 
