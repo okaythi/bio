@@ -86,8 +86,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const body = (await context.request.json()) as WatchRequestBody;
     const movieId = body.movieId ?? body.movie_id;
-    const progressSeconds = body.progressSeconds ?? body.progress_seconds ?? 0;
-    const durationSeconds = body.durationSeconds ?? body.duration_seconds ?? 0;
+    let progressSeconds = body.progressSeconds ?? body.progress_seconds;
+    const durationSeconds = body.durationSeconds ?? body.duration_seconds;
     const completed = body.completed ? 1 : 0;
     const toggleLike = body.toggleLike;
 
@@ -95,9 +95,35 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       return new Response(JSON.stringify({ error: "movieId is required" }), { status: 400, headers: corsHeaders });
     }
 
+    if (progressSeconds !== undefined && durationSeconds !== undefined && durationSeconds > 0) {
+      if (progressSeconds < 0) progressSeconds = 0;
+      if (progressSeconds > durationSeconds) progressSeconds = durationSeconds;
+    }
+
+    if (!movieId) {
+      return new Response(JSON.stringify({ error: "movieId is required" }), { status: 400, headers: corsHeaders });
+    }
+
     const existing = await context.env.DB.prepare(
-      "SELECT id, rating FROM user_watch_history WHERE user_id = ? AND movie_id = ?"
-    ).bind(userId, movieId).first<{ id: string; rating: number | null }>();
+      "SELECT id, rating, progress_seconds, last_watched_at FROM user_watch_history WHERE user_id = ? AND movie_id = ?"
+    ).bind(userId, movieId).first<{ id: string; rating: number | null; progress_seconds: number; last_watched_at: string }>();
+
+    // Mathematical Security: Temporal Bound Checking
+    if (!toggleLike && existing && progressSeconds !== undefined && existing.progress_seconds !== undefined) {
+      const now = new Date();
+      const lastWatched = new Date(existing.last_watched_at + 'Z');
+      const secondsSinceLastUpdate = (now.getTime() - lastWatched.getTime()) / 1000;
+      
+      // Allow max 2.5x speed playback + 15s buffer. Clamp if they exceed this.
+      const maxAllowedProgress = existing.progress_seconds + (secondsSinceLastUpdate * 2.5) + 15;
+      
+      if (progressSeconds > existing.progress_seconds && progressSeconds > maxAllowedProgress) {
+        progressSeconds = maxAllowedProgress;
+        if (durationSeconds !== undefined && durationSeconds > 0 && progressSeconds > durationSeconds) {
+          progressSeconds = durationSeconds;
+        }
+      }
+    }
 
     let newRating = existing?.rating || null;
     if (toggleLike) {
@@ -108,16 +134,18 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     await context.env.DB.prepare(`
       INSERT INTO user_watch_history (id, user_id, movie_id, progress_seconds, duration_seconds, completed, rating, last_watched_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      VALUES (?, ?, ?, COALESCE(?, 0), COALESCE(?, 0), ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT(id) DO UPDATE SET
-        progress_seconds = COALESCE(excluded.progress_seconds, progress_seconds),
-        duration_seconds = COALESCE(excluded.duration_seconds, duration_seconds),
+        progress_seconds = CASE WHEN ? IS NOT NULL THEN ? ELSE progress_seconds END,
+        duration_seconds = CASE WHEN ? IS NOT NULL THEN ? ELSE duration_seconds END,
         completed = COALESCE(excluded.completed, completed),
         rating = excluded.rating,
         watch_count = watch_count + 1,
         last_watched_at = CURRENT_TIMESTAMP
     `).bind(
-      watchId, userId, movieId, progressSeconds, durationSeconds, completed, newRating
+      watchId, userId, movieId, progressSeconds ?? null, durationSeconds ?? null, completed, newRating,
+      progressSeconds ?? null, progressSeconds ?? null,
+      durationSeconds ?? null, durationSeconds ?? null
     ).run();
 
     return new Response(JSON.stringify({ success: true, isLiked: newRating === 5 }), {

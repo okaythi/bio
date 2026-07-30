@@ -95,7 +95,7 @@ export class OmniTracker {
     });
   }
 
-  public attachVideoTracker(videoId: string, element: HTMLMediaElement) {
+  public attachVideoTracker(videoId: string, element: HTMLMediaElement, onAbandon?: (progress: number, duration: number) => void) {
     let lastPause = 0;
     
     element.addEventListener('pause', () => {
@@ -116,6 +116,9 @@ export class OmniTracker {
     window.addEventListener('beforeunload', () => {
       if (!element.ended) {
         this.queueEvent('video_abandoned', { videoId, progress: element.currentTime });
+        if (onAbandon) {
+          onAbandon(element.currentTime, element.duration);
+        }
       }
     });
   }
