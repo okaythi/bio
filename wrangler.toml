@@ -12,3 +12,17 @@ binding = "DB"
 database_name = "bio-db"
 database_id = "ac9e28c6-ac20-4c43-893b-d3a41d687d47"
 
+[[queues.producers]]
+binding = "TELEMETRY_QUEUE"
+queue = "omni-telemetry-queue"
+
+[[analytics_engine_datasets]]
+binding = "TELEMETRY_ANALYTICS"
+
+[ai]
+binding = "AI"
+
+[[r2_buckets]]
+binding = "TELEMETRY_BLOBS"
+bucket_name = "omni-telemetry-blobs"
+
