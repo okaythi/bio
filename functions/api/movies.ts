@@ -1,7 +1,10 @@
+import { getMovieMetadata, D1Database } from '../lib/db';
+
 const R2_CDN = "/api/media";
 
 export interface Env {
   movies: R2Bucket;
+  DB: D1Database;
 }
 
 interface MovieItem {
@@ -15,8 +18,6 @@ interface MovieItem {
   audioChannels?: string;
   spatialAudio?: boolean;
 }
-
-import { SPIRITED_AWAY_CHAPTERS } from '../config/movies';
 
 export const onRequest: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
@@ -37,14 +38,15 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
     const objects = await bucket.list();
     const moviesMap = new Map<string, MovieItem>();
+    const folderNames = new Set<string>();
 
     for (const obj of objects.objects) {
-      if (!obj.key.endsWith(".mp4") && !obj.key.endsWith(".mkv")) continue;
-
+      if (!obj.key.endsWith(".mp4") && !obj.key.endsWith(".mkv") && !obj.key.endsWith(".srt")) continue;
       const parts = obj.key.split('/');
-      if (parts.length < 2) continue;
+      if (parts.length >= 2) folderNames.add(parts[0]);
+    }
 
-      const folderName = parts[0];
+    const metadataPromises = Array.from(folderNames).map(async (folderName) => {
       const match = folderName.match(/^(.*?)\s*\((\d{4})\)$/);
       let title = folderName;
       let year = "";
@@ -54,36 +56,23 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         year = match[2];
       }
 
-      const isSpirited = folderName.includes("Spirited Away") || title.includes("Spirited Away");
-      const isLeviticus = folderName.includes("Leviticus") || title.includes("Leviticus");
+      const dbMeta = await getMovieMetadata(context.env.DB, folderName);
+      
+      moviesMap.set(folderName, {
+        id: folderName,
+        title,
+        year,
+        videoUrl: "",
+        subtitles: [],
+        chapters: dbMeta?.chapters,
+        audioChannels: dbMeta?.audioChannels,
+        spatialAudio: dbMeta?.spatialAudio
+      });
+    });
 
-      if (!moviesMap.has(folderName)) {
-        moviesMap.set(folderName, {
-          id: folderName,
-          title,
-          year,
-          videoUrl: "",
-          subtitles: [],
-          chapters: isSpirited ? SPIRITED_AWAY_CHAPTERS : undefined,
-          audioChannels: isSpirited ? "7.1" : (isLeviticus ? "5.1" : undefined),
-          spatialAudio: isSpirited ? true : undefined
-        });
-      }
-
-      const movie = moviesMap.get(folderName)!;
-      const fileName = parts[1];
-      const url = `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
-
-      if (fileName.includes(".h264.")) {
-        movie.h264Url = url;
-      } else {
-        movie.videoUrl = url;
-      }
-    }
+    await Promise.all(metadataPromises);
 
     for (const obj of objects.objects) {
-      if (!obj.key.endsWith(".srt")) continue;
-
       const parts = obj.key.split('/');
       if (parts.length < 2) continue;
 
@@ -92,13 +81,19 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (!movie) continue;
 
       const fileName = parts[1];
-      const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
-      const lang = langMatch ? langMatch[1] : "en";
+      const url = `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
 
-      movie.subtitles.push({
-        lang,
-        url: `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`
-      });
+      if (obj.key.endsWith(".mp4") || obj.key.endsWith(".mkv")) {
+        if (fileName.includes(".h264.")) {
+          movie.h264Url = url;
+        } else {
+          movie.videoUrl = url;
+        }
+      } else if (obj.key.endsWith(".srt")) {
+        const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
+        const lang = langMatch ? langMatch[1] : "en";
+        movie.subtitles.push({ lang, url });
+      }
     }
 
     return new Response(JSON.stringify(Array.from(moviesMap.values())), {
