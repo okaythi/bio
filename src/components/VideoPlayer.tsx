@@ -515,7 +515,14 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                 </button>
               </div>
 
-              <span className="video-title">{metadata.title}</span>
+              <span className="video-title">
+                {metadata.title}
+                {(() => {
+                  const currentSec = (progress / 100) * (videoRef.current?.duration || 0);
+                  const ch = metadata.chapters?.find(c => currentSec >= c.start && currentSec < c.end);
+                  return ch ? <span className="chapter-title" style={{ opacity: 0.75, fontWeight: 400, marginLeft: 8 }}> — {ch.title}</span> : null;
+                })()}
+              </span>
             </div>
             
             <div className="controls-right">
