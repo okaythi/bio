@@ -434,6 +434,8 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         ref={videoRef}
         src={activeVideoUrl}
         className="video-element"
+        controlsList="nodownload"
+        onContextMenu={(e) => e.preventDefault()}
         autoPlay
         crossOrigin="anonymous"
         onPlay={() => setIsPlaying(true)}
@@ -504,6 +506,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         style={{ display: 'none' }}
         muted
         crossOrigin="anonymous"
+        onContextMenu={(e) => e.preventDefault()}
         onSeeked={handleHiddenVideoSeeked}
       />
       
