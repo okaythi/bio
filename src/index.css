@@ -31,6 +31,23 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }
 
 body {
@@ -339,6 +356,7 @@ body {
   width: 4px;
   height: 80px;
   cursor: pointer;
+  accent-color: var(--accent);
 }
 
 /* Scrubbing Thumbnails */
@@ -411,6 +429,15 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
   animation: langMenuFadeIn 0.15s ease;
+}
+
+.menu-header {
+  color: rgba(255,255,255,0.4);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 4px 16px 8px;
+  font-weight: bold;
 }
 
 @keyframes langMenuFadeIn {
@@ -534,20 +561,38 @@ body {
   z-index: 20;
 }
 
-/* Subtitle (CC) Netflix Styling */
+/* Subtitle (CC) Styling — matches theatrical reference */
 ::cue {
   color: white;
   background-color: transparent;
   background: transparent;
   text-shadow: 
-    2px 2px 0px #000, 
-    -2px -2px 0px #000, 
-    2px -2px 0px #000, 
-    -2px 2px 0px #000,
-    0px 0px 8px rgba(0, 0, 0, 0.9);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  font-size: 3.5vh;
-  font-weight: 600;
+    -1px -1px 0 rgba(0,0,0,0.95),
+     1px -1px 0 rgba(0,0,0,0.95),
+    -1px  1px 0 rgba(0,0,0,0.95),
+     1px  1px 0 rgba(0,0,0,0.95),
+     0px  2px 6px rgba(0,0,0,0.7);
+  font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic', 'Meiryo', 'Helvetica Neue', Arial, sans-serif;
+  font-size: var(--sub-size, 3.2vh);
+  font-weight: 500;
+  line-height: 2.0;
+  ruby-position: over;
+}
+
+/* Larger font size for Japanese specifically, but now dynamic based on user setting */
+[data-sub-lang="ja"] video::cue {
+  font-size: calc(var(--sub-size, 3.2vh) * 1.3);
+}
+
+/* Furigana (ruby text) above kanji */
+::cue(rt) {
+  font-size: 0.45em;
+  color: white;
+  text-shadow: 
+    -1px -1px 0 rgba(0,0,0,0.95),
+     1px -1px 0 rgba(0,0,0,0.95),
+    -1px  1px 0 rgba(0,0,0,0.95),
+     1px  1px 0 rgba(0,0,0,0.95);
 }
 
 .play-button {
@@ -608,6 +653,14 @@ body {
   padding: 0 4px;
   border-radius: 2px;
   font-size: 0.8rem;
+}
+
+.spatial-audio-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 0.78rem;
+  letter-spacing: 0.2px;
 }
 
 .modal-overview {
@@ -760,6 +813,34 @@ body {
   justify-content: center;
   align-items: center;
   z-index: 60;
+}
+
+/* Shortcuts Toast */
+.shortcuts-toast {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+  z-index: 100;
+  animation: toastFadeInOut 8s ease forwards;
+  pointer-events: none;
+}
+
+@keyframes toastFadeInOut {
+  0% { opacity: 0; transform: translate(-50%, -20px); }
+  5% { opacity: 1; transform: translate(-50%, 0); }
+  90% { opacity: 1; transform: translate(-50%, 0); }
+  100% { opacity: 0; transform: translate(-50%, -20px); }
 }
 
 .video-error-content {
@@ -935,4 +1016,39 @@ body {
 
 .no-results p {
   font-size: 1.2rem;
+}
+
+/* ── 2026-07_new_ui experiment overrides ───────────────────────────────── */
+body.new-ui .nav-logo {
+  display: flex;
+  align-items: center;
+  font-size: unset;
+  font-weight: unset;
+  letter-spacing: unset;
+  color: unset;
+  line-height: 1;
+  margin: 0;
+  padding: 0;
+}
+
+body.new-ui .hero-content {
+  max-width: 550px;
+}
+
+body.new-ui .hero-title {
+  font-size: clamp(1.8rem, 3.2vw, 2.8rem);
+}
+
+body.new-ui .hero-overview {
+  font-size: 1rem;
+  max-width: 90%;
+}
+
+body.new-ui .movie-rows {
+  margin-top: -80px;
+}
+
+body.new-ui .row-header {
+  font-size: clamp(1rem, 1.4vw, 1.5rem);
+  margin-top: 1.5em;
 }

@@ -12,6 +12,8 @@ export interface MovieMetadata {
   hasIntro?: boolean;
   introStart?: number;
   introEnd?: number;
+  audioChannels?: string;
+  spatialAudio?: boolean;
 }
 
 export const fetchLibrary = async (): Promise<MovieMetadata[]> => {
@@ -27,7 +29,8 @@ export const fetchLibrary = async (): Promise<MovieMetadata[]> => {
       subtitles: [{ lang: 'en', url: `${R2_CDN}/${encodeURIComponent("Leviticus (2026)")}/${encodeURIComponent("Leviticus (1080p - 5.1).srt")}` }],
       title: "Leviticus",
       year: "2026",
-      hasIntro: false
+      hasIntro: false,
+      audioChannels: "5.1"
     }];
   }
   

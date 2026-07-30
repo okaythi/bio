@@ -176,6 +176,16 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
               <span>{movie.release_date.split('-')[0]}</span>
               {movie.runtime && <span>{Math.floor(movie.runtime / 60)}h {movie.runtime % 60}m</span>}
               <span className="hd">HD</span>
+              {(metadata.audioChannels || ((metadata.title?.toLowerCase().includes('spirited') || metadata.id?.toLowerCase().includes('spirited') || movie.title?.toLowerCase().includes('spirited')) ? "7.1" : ((metadata.title?.toLowerCase().includes('leviticus') || metadata.id?.toLowerCase().includes('leviticus') || movie.title?.toLowerCase().includes('leviticus')) ? "5.1" : null))) && (
+                <span className="hd">
+                  {metadata.audioChannels || ((metadata.title?.toLowerCase().includes('spirited') || metadata.id?.toLowerCase().includes('spirited') || movie.title?.toLowerCase().includes('spirited')) ? "7.1" : "5.1")}
+                </span>
+              )}
+              {(metadata.spatialAudio ?? (metadata.title?.toLowerCase().includes('spirited') || metadata.id?.toLowerCase().includes('spirited') || movie.title?.toLowerCase().includes('spirited'))) && (
+                <span className="hd spatial-audio-tag" title="Dolby Atmos Enabled">
+                  Dolby Atmos
+                </span>
+              )}
             </div>
             <p className="modal-overview">{movie.overview}</p>
           </div>

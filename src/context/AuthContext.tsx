@@ -63,6 +63,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isStaff = Boolean(user && (user.role === 'admin' || flags.includes('is_staff') || isThyOwner));
   const canEditFlags = Boolean(user && (flags.includes('edit_flags') || isThyOwner));
 
+  useEffect(() => {
+    document.body.classList.add('new-ui');
+  }, []);
+
   const fetchSession = async () => {
     try {
       const res = await fetch('/api/auth/me');
