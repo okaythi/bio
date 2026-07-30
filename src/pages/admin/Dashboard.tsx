@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { ShieldCheck, Plus, X, Globe, Lock } from 'lucide-react';
 
 export default function Dashboard() {
   const [settings, setSettings] = useState({ vpnCheckEnabled: true, allowlistIps: [] as string[] });
@@ -39,62 +41,113 @@ export default function Dashboard() {
     saveSettings(updated);
   };
 
+  const cardStyle = {
+    background: 'rgba(255, 255, 255, 0.03)',
+    backdropFilter: 'blur(20px)',
+    border: '1px solid rgba(255, 255, 255, 0.05)',
+    borderRadius: '16px',
+    padding: '2.5rem',
+    boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+    marginBottom: '2rem'
+  };
+
   return (
-    <div>
-      <h2 style={{ fontSize: '2rem', marginBottom: '2rem' }}>OmniControl Settings</h2>
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '3rem' }}>
+        <ShieldCheck size={36} color="#ff2a5f" />
+        <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, letterSpacing: '-1px' }}>Global Settings</h2>
+      </div>
       
-      <div style={{ background: '#1a1a1a', padding: '2rem', borderRadius: '8px', marginBottom: '2rem' }}>
-        <h3 style={{ marginBottom: '1rem', color: '#ff4444' }}>Network Security</h3>
-        
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: '#ff2a5f' }}>
+            <Globe size={24} />
+            <h3 style={{ fontSize: '1.5rem', margin: 0, fontWeight: 600 }}>Network Security</h3>
+          </div>
+          <p style={{ color: '#888', marginBottom: '2rem', lineHeight: 1.6 }}>
+            Toggle strict network validation. If enabled, Cloudflare trust scores and AS Organization types are evaluated on every admin request.
+          </p>
+          
+          <label style={{ 
+            display: 'flex', alignItems: 'center', cursor: 'pointer', background: 'rgba(0,0,0,0.3)',
+            padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)',
+            transition: 'all 0.2s'
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: 600, color: '#fff', marginBottom: '0.25rem' }}>Strict VPN & Proxy Block</div>
+              <div style={{ fontSize: '0.85rem', color: '#888' }}>Reject connections from known VPN providers or datacenters.</div>
+            </div>
             <input 
               type="checkbox" 
               checked={settings.vpnCheckEnabled} 
               onChange={e => saveSettings({ ...settings, vpnCheckEnabled: e.target.checked })}
-              style={{ width: '20px', height: '20px', marginRight: '10px' }}
               disabled={saving}
+              style={{ width: '24px', height: '24px', accentColor: '#ff2a5f', cursor: 'pointer' }}
             />
-            <span>Enable strict VPN & Proxy block (Recommended)</span>
           </label>
         </div>
 
-        <h3 style={{ marginBottom: '1rem', color: '#ff4444' }}>IP Allowlist</h3>
-        <p style={{ marginBottom: '1rem', color: '#aaa' }}>If populated, ONLY these IPs can access the OmniControl Center.</p>
-        
-        <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
-          <input 
-            type="text" 
-            placeholder="Enter IP Address..." 
-            value={newIp} 
-            onChange={e => setNewIp(e.target.value)}
-            style={{ padding: '0.75rem', borderRadius: '4px', border: '1px solid #333', background: '#000', color: '#fff', flex: 1 }}
-          />
-          <button 
-            onClick={addIp}
-            disabled={saving}
-            style={{ padding: '0.75rem 2rem', background: '#333', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-          >
-            Add IP
-          </button>
-        </div>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: '#ff2a5f' }}>
+            <Lock size={24} />
+            <h3 style={{ fontSize: '1.5rem', margin: 0, fontWeight: 600 }}>IP Allowlist</h3>
+          </div>
+          <p style={{ color: '#888', marginBottom: '2rem', lineHeight: 1.6 }}>
+            Restrict OmniControl access to specific static IP addresses. If populated, only these IPs bypass the firewall.
+          </p>
+          
+          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+            <input 
+              type="text" 
+              placeholder="e.g. 192.168.1.1" 
+              value={newIp} 
+              onChange={e => setNewIp(e.target.value)}
+              style={{ 
+                flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', 
+                background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '1rem', outline: 'none' 
+              }}
+            />
+            <button 
+              onClick={addIp}
+              disabled={saving || !newIp}
+              style={{ 
+                padding: '0 1.5rem', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', 
+                color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                fontWeight: 600, opacity: (!newIp || saving) ? 0.5 : 1
+              }}
+            >
+              <Plus size={20} /> Add
+            </button>
+          </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {settings.allowlistIps.map(ip => (
-            <div key={ip} style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: '#000', borderRadius: '4px' }}>
-              <span>{ip}</span>
-              <button 
-                onClick={() => removeIp(ip)} 
-                disabled={saving}
-                style={{ background: '#ff4444', border: 'none', color: '#fff', borderRadius: '4px', padding: '0.25rem 0.5rem', cursor: 'pointer' }}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {settings.allowlistIps.map(ip => (
+              <motion.div 
+                key={ip} 
+                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+                style={{ 
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', 
+                  background: 'rgba(0,0,0,0.3)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' 
+                }}
               >
-                Remove
-              </button>
-            </div>
-          ))}
-          {settings.allowlistIps.length === 0 && <div style={{ color: '#666' }}>No IPs allowlisted. Open to any IP (subject to VPN checks).</div>}
+                <span style={{ fontSize: '1rem', letterSpacing: '1px', fontFamily: 'monospace' }}>{ip}</span>
+                <button 
+                  onClick={() => removeIp(ip)} 
+                  disabled={saving}
+                  style={{ background: 'transparent', border: 'none', color: '#ff4444', cursor: 'pointer', padding: '0.5rem' }}
+                >
+                  <X size={20} />
+                </button>
+              </motion.div>
+            ))}
+            {settings.allowlistIps.length === 0 && (
+              <div style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', padding: '2rem 0' }}>
+                No strict IPs configured. System is open to all non-VPN traffic.
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }
