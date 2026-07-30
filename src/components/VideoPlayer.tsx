@@ -47,12 +47,10 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
 
-  // H.264 fallback states
   const [activeVideoUrl, setActiveVideoUrl] = useState(metadata.videoUrl);
   const [isUsingH264Fallback, setIsUsingH264Fallback] = useState(false);
   const [showH264Tooltip, setShowH264Tooltip] = useState(false);
 
-  // Determine tooltip theme from AuthContext user preferences (defaults to dark)
   const userPrefTheme = user?.preferences?.theme || 'dark';
   let activeTheme = userPrefTheme;
   if (userPrefTheme === 'system') {
@@ -71,7 +69,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Thumbnail states
   const [isHoveringProgress, setIsHoveringProgress] = useState(false);
   const [hoverX, setHoverX] = useState(0);
   const [hoverTime, setHoverTime] = useState(0);
@@ -79,7 +76,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const timeoutRef = useRef<number | null>(null);
   const hasSeekedRef = useRef(false);
   
-  // Refs mirror mutable state for stable event handlers (avoids stale closures — BUG-007)
   const isMutedRef = useRef(false);
   const volumeRef = useRef(100);
   const selectedLangRef = useRef<string | null>(null);
@@ -115,7 +111,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   useEffect(() => { isMutedRef.current = isMuted; }, [isMuted]);
   useEffect(() => { volumeRef.current = volume; }, [volume]);
 
-  // When video source falls back to H.264, re-initialize media engine and trigger auto-play
   useEffect(() => {
     if (isUsingH264Fallback && videoRef.current) {
       videoRef.current.load();
@@ -340,8 +335,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     setShowSubMenu(false);
   };
 
-
-
   const handleTimeUpdate = () => {
     if (videoRef.current) {
       const current = videoRef.current.currentTime;
@@ -401,9 +394,8 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     }
   };
 
-  // Periodic Heartbeat & Telemetry
   useEffect(() => {
-    if (!user) return; // Only sync for logged in users
+    if (!user) return; 
     
     const sendProgress = () => {
       if (!videoRef.current) return;
@@ -433,7 +425,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     return () => clearInterval(interval);
   }, [isPlaying, metadata.id, user]);
 
-  // OmniTracker & Beacon
   useEffect(() => {
     if (!videoRef.current) return;
     
@@ -444,7 +435,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         progressSeconds: progress,
         durationSeconds: duration
       });
-      // Reliable delivery for abandonment
+      
       fetch('/api/user/watch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -464,7 +455,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     return () => window.removeEventListener('pagehide', handlePageHide);
   }, [metadata.id, user]);
 
-  // Thumbnail Scrubbing Logic
   const handleProgressMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!progressBarRef.current || !videoRef.current) return;
     const rect = progressBarRef.current.getBoundingClientRect();
@@ -491,8 +481,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     videoRef.current.currentTime = percentage * duration;
     setProgress(percentage * 100);
   };
-
-
 
   return (
     <div 
@@ -598,7 +586,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
           </button>
         </div>
 
-        {/* Clickable middle area to pause/play */}
         <div 
           className="controls-middle" 
           style={{ flexGrow: 1, width: '100%', cursor: 'pointer' }} 
@@ -682,7 +669,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                 </div>
               )}
 
-              {/* Subtitle Settings Menu */}
               {vttUrls.size > 0 && (
                 <div className="cc-menu-container" ref={subMenuRef}>
                   {showSubMenu && (
@@ -699,7 +685,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                 </div>
               )}
 
-              {/* Subtitle Lang Menu */}
               {vttUrls.size > 0 && (
                 <div className="cc-menu-container" ref={langMenuRef}>
                   {showLangMenu && (
@@ -730,7 +715,6 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
                 </div>
               )}
               
-              {/* Playback Speed Menu */}
               <div className="cc-menu-container" ref={speedMenuRef}>
                 {showSpeedMenu && (
                   <div className="cc-dropdown">
