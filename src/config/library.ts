@@ -5,6 +5,7 @@ export interface MovieMetadata {
   videoUrl: string;
   h264Url?: string;
   subtitles?: { lang: string; url: string }[];
+  chapters?: { start: number; end: number; title: string }[];
   title: string;
   year?: string;
   tmdbId?: number;
