@@ -8,6 +8,7 @@ import Navigation from '../components/Navigation';
 import MovieCard from '../components/MovieCard';
 import TrailerModal from '../components/TrailerModal';
 import LoadingSkeleton from '../components/LoadingSkeleton';
+import AuthModal from '../components/AuthModal';
 import type { TMDBMovie } from '../services/tmdb';
 import type { MovieMetadata } from '../config/library';
 
@@ -15,6 +16,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMovie, setSelectedMovie] = useState<TMDBMovie | null>(null);
   const [selectedMeta, setSelectedMeta] = useState<MovieMetadata | null>(null);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
   const { data: library, isLoading: isLibraryLoading } = useQuery({
     queryKey: ['libraryMovies'],
@@ -165,9 +167,12 @@ export default function Home() {
             metadata={selectedMeta}
             trailerKey={trailerKey}
             onClose={closeModal}
+            onOpenAuth={() => setIsAuthModalOpen(true)}
           />
         )}
       </AnimatePresence>
+
+      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
     </div>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, X, ThumbsUp, Volume2, VolumeX } from 'lucide-react';
+import { Play, X, ThumbsUp, Volume2, VolumeX, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
 import type { YouTubePlayer } from 'react-youtube';
@@ -13,9 +13,10 @@ interface TrailerModalProps {
   metadata: MovieMetadata;
   trailerKey?: string;
   onClose: () => void;
+  onOpenAuth: () => void;
 }
 
-export default function TrailerModal({ movie, metadata, trailerKey, onClose }: TrailerModalProps) {
+export default function TrailerModal({ movie, metadata, trailerKey, onClose, onOpenAuth }: TrailerModalProps) {
   const navigate = useNavigate();
   const { user, likedMovies, toggleLike } = useAuth();
   const [isMuted, setIsMuted] = useState(true);
@@ -64,7 +65,8 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
 
   const handleLikeClick = async () => {
     if (!user) {
-      alert("Please sign in to like titles!");
+      onClose();
+      onOpenAuth();
       return;
     }
     try {
@@ -154,9 +156,12 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose }: T
                 <span>Play</span>
               </button>
             ) : (
-              <button className="play-button" onClick={() => alert("Please sign in to watch this title.")}>
-                <Play size={24} fill="black" color="black" />
-                <span>Sign In to Watch</span>
+              <button
+                className="sign-in-cta-button"
+                onClick={() => { onClose(); onOpenAuth(); }}
+              >
+                <Lock size={18} />
+                <span>Sign in to watch</span>
               </button>
             )}
 
