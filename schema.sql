@@ -105,9 +105,47 @@ CREATE TABLE IF NOT EXISTS sessions (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS user_devices (
+  fingerprint_hash TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  device_type TEXT,
+  is_primary BOOLEAN DEFAULT 0,
+  session_count INTEGER DEFAULT 1,
+  total_time_active_seconds REAL DEFAULT 0,
+  last_seen_at DATETIME,
+  first_seen_at DATETIME,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_locations (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  country TEXT,
+  region TEXT,
+  city TEXT,
+  ip_address TEXT,
+  is_vpn BOOLEAN DEFAULT 0,
+  weight REAL DEFAULT 1.0,
+  last_seen_at DATETIME,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS user_behavioral_profiles (
+  user_id TEXT PRIMARY KEY,
+  rage_click_frequency REAL DEFAULT 0,
+  indecision_score REAL DEFAULT 0,
+  content_commitment_score REAL DEFAULT 0,
+  psychometric_state TEXT, 
+  psychometric_vector_json TEXT, 
+  last_calculated_at DATETIME,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
 CREATE INDEX IF NOT EXISTS idx_watch_user_movie ON user_watch_history(user_id, movie_id);
 CREATE INDEX IF NOT EXISTS idx_telemetry_user ON user_telemetry_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_telemetry_event ON user_telemetry_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_user_devices_user ON user_devices(user_id);
+CREATE INDEX IF NOT EXISTS idx_user_locations_user ON user_locations(user_id);
