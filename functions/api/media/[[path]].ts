@@ -40,7 +40,15 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   const rangeHeader = context.request.headers.get("Range");
   const options: R2GetOptions = {};
   if (rangeHeader) {
-    options.range = context.request.headers;
+    const parts = rangeHeader.replace("bytes=", "").split("-");
+    const start = parts[0] ? parseInt(parts[0], 10) : 0;
+    const end = parts[1] ? parseInt(parts[1], 10) : undefined;
+    
+    if (end !== undefined) {
+      options.range = { offset: start, length: (end - start) + 1 };
+    } else {
+      options.range = { offset: start };
+    }
   }
   options.onlyIf = context.request.headers;
   
