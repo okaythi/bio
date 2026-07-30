@@ -1,3 +1,10 @@
+export interface Env {
+  TELEMETRY_ANALYTICS?: any;
+  TELEMETRY_BLOBS?: R2Bucket;
+  TELEMETRY_QUEUE?: Queue;
+  AI?: any;
+}
+
 export const onRequestOptions: PagesFunction = async () => {
   return new Response(null, {
     headers: {
