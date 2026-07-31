@@ -76,6 +76,34 @@ export default function Home() {
   const continueWatching = progressMovies.filter(m => m.progress > 2.77 && m.progress < 95);
   const availableNow = progressMovies.filter(m => !(m.progress > 2.77 && m.progress < 95));
 
+  const { data: settings } = useQuery({
+    queryKey: ['adminSettings'],
+    queryFn: () => fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ comingSoonList: [] }))
+  });
+
+  const rawComingSoon = settings?.comingSoonList || [];
+  const comingSoonFiltered: { meta: MovieMetadata; tmdbData: TMDBMovie }[] = rawComingSoon.filter((cs: any) => {
+    return !library?.some(lib => lib.title.toLowerCase() === cs.title.toLowerCase() || lib.id === cs.id);
+  }).map((cs: any) => ({
+    meta: {
+      id: cs.id,
+      title: cs.title,
+      year: cs.year,
+      type: cs.type,
+      isComingSoon: true,
+      description: cs.overview
+    } as MovieMetadata,
+    tmdbData: {
+      id: cs.tmdbId || 0,
+      title: cs.title,
+      overview: cs.overview || '',
+      poster_path: cs.poster_path || '',
+      backdrop_path: cs.backdrop_path || '',
+      release_date: cs.year || '',
+      vote_average: 8.5
+    } as TMDBMovie
+  }));
+
   return (
     <div className="home-container">
       <Navigation searchQuery={searchQuery} onSearchChange={setSearchQuery} />
@@ -144,6 +172,26 @@ export default function Home() {
                 <div className="carousel-container">
                   <div className="carousel">
                     {availableNow.map(({meta, tmdbData}) => (
+                      <MovieCard 
+                        key={meta.id} 
+                        movie={tmdbData} 
+                        metadata={meta} 
+                        onClick={handleCardClick} 
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+            {comingSoonFiltered.length > 0 && (
+              <>
+                <h2 className="row-header" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>Coming Soon</span>
+                  <span style={{ fontSize: '0.8rem', background: 'rgba(255,42,95,0.2)', color: '#ff2a5f', padding: '0.2rem 0.6rem', borderRadius: '12px', border: '1px solid rgba(255,42,95,0.4)', textTransform: 'uppercase', letterSpacing: '1px' }}>Upcoming</span>
+                </h2>
+                <div className="carousel-container">
+                  <div className="carousel">
+                    {comingSoonFiltered.map(({meta, tmdbData}) => (
                       <MovieCard 
                         key={meta.id} 
                         movie={tmdbData} 

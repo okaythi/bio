@@ -42,6 +42,16 @@ export default function MovieCard({ movie, metadata, onClick }: MovieCardProps) 
       />
 
       <div style={{ position: 'absolute', top: '8px', right: '8px', zIndex: 10, display: 'flex', gap: '6px', alignItems: 'center' }}>
+        {metadata.isComingSoon && (
+          <div style={{
+            backgroundColor: 'rgba(255, 42, 95, 0.9)', borderRadius: '4px',
+            padding: '2px 8px', fontSize: '0.75rem', fontWeight: 'bold', color: 'white',
+            letterSpacing: '0.5px', textTransform: 'uppercase',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.5)'
+          }}>
+            Coming Soon
+          </div>
+        )}
         {isLiked && (
           <div style={{
             backgroundColor: 'rgba(229, 9, 20, 0.85)', borderRadius: '50%',

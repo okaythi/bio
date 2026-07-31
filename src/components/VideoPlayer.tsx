@@ -8,6 +8,8 @@ import { globalTracker } from '../lib/telemetry/OmniTracker';
 
 interface VideoPlayerProps {
   metadata: MovieMetadata;
+  initialSeason?: number;
+  initialEpisode?: number;
 }
 
 const LANG_LABELS: Record<string, string> = {
@@ -29,13 +31,14 @@ const formatTime = (seconds: number) => {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 };
 
-export default function VideoPlayer({ metadata }: VideoPlayerProps) {
+export default function VideoPlayer({ metadata, initialSeason, initialEpisode }: VideoPlayerProps) {
   const { user, updatePreferences, watchHistory } = useAuth();
   const videoRef = useRef<HTMLVideoElement>(null);
   const progressBarRef = useRef<HTMLDivElement>(null);
   const langMenuRef = useRef<HTMLDivElement>(null);
   const speedMenuRef = useRef<HTMLDivElement>(null);
   const subMenuRef = useRef<HTMLDivElement>(null);
+  const episodesMenuRef = useRef<HTMLDivElement>(null);
   
   const navigate = useNavigate();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -47,9 +50,28 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
 
-  const [activeVideoUrl, setActiveVideoUrl] = useState(metadata.videoUrl);
+  const [currentSeason, setCurrentSeason] = useState(initialSeason || (metadata.seasons?.[0]?.seasonNumber ?? 1));
+  const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState((initialEpisode ? initialEpisode - 1 : 0));
+  
+  const currentEpisodeData = metadata.type === 'tv' 
+    ? metadata.seasons?.find(s => s.seasonNumber === currentSeason)?.episodes[currentEpisodeIndex]
+    : undefined;
+
+  const [activeVideoUrl, setActiveVideoUrl] = useState(currentEpisodeData ? currentEpisodeData.videoUrl : metadata.videoUrl);
   const [isUsingH264Fallback, setIsUsingH264Fallback] = useState(false);
   const [showH264Tooltip, setShowH264Tooltip] = useState(false);
+
+  useEffect(() => {
+    if (currentEpisodeData) {
+      setActiveVideoUrl(currentEpisodeData.videoUrl);
+      setIsUsingH264Fallback(false);
+      setProgress(0);
+      setVideoError(null);
+      if (videoRef.current) {
+        videoRef.current.load();
+      }
+    }
+  }, [currentEpisodeData]);
 
   const userPrefTheme = user?.preferences?.theme || 'dark';
   let activeTheme = userPrefTheme;
@@ -63,6 +85,8 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
 
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+
+  const [showEpisodesMenu, setShowEpisodesMenu] = useState(false);
 
   const [subSize, setSubSize] = useState('3.2vh');
   const [showSubMenu, setShowSubMenu] = useState(false);
@@ -134,6 +158,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
           setShowLangMenu(false);
           setShowSpeedMenu(false);
           setShowSubMenu(false);
+          setShowEpisodesMenu(false);
         }
       }, timeoutDuration);
     };
@@ -199,8 +224,10 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     const urls = new Map<string, string>();
     const promises: Promise<void>[] = [];
 
-    if (metadata.subtitles && metadata.subtitles.length > 0) {
-      metadata.subtitles.forEach(sub => {
+    const subs = currentEpisodeData?.subtitles || metadata.subtitles;
+
+    if (subs && subs.length > 0) {
+      subs.forEach(sub => {
         const fetchUrl = `${sub.url}?t=${Date.now()}`;
         const p = fetch(fetchUrl)
           .then(r => r.ok ? r.text() : null)
@@ -226,7 +253,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
     return () => {
       urls.forEach(url => URL.revokeObjectURL(url));
     };
-  }, [metadata.subtitles]);
+  }, [metadata.subtitles, currentEpisodeData]);
 
   useEffect(() => {
     if (!videoRef.current) return;
@@ -242,6 +269,7 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       if (langMenuRef.current && !langMenuRef.current.contains(target)) setShowLangMenu(false);
       if (speedMenuRef.current && !speedMenuRef.current.contains(target)) setShowSpeedMenu(false);
       if (subMenuRef.current && !subMenuRef.current.contains(target)) setShowSubMenu(false);
+      if (episodesMenuRef.current && !episodesMenuRef.current.contains(target)) setShowEpisodesMenu(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -365,15 +393,36 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
         }
 
         const pct = (current / total) * 100;
-        const savedStr = localStorage.getItem(`bio-progress-${metadata.id}`);
+        const storageKey = `bio-progress-${metadata.id}${currentEpisodeData ? `-${currentSeason}-${currentEpisodeIndex}` : ''}`;
+        const savedStr = localStorage.getItem(storageKey);
         const savedPct = savedStr ? parseFloat(savedStr) : 0;
         
         if (savedPct > 94.57) {
           if (pct > 5.13) {
-            localStorage.setItem(`bio-progress-${metadata.id}`, pct.toString());
+            localStorage.setItem(storageKey, pct.toString());
           }
         } else {
-          localStorage.setItem(`bio-progress-${metadata.id}`, pct.toString());
+          localStorage.setItem(storageKey, pct.toString());
+        }
+
+        // Handle Auto-Play Next Episode
+        if (metadata.type === 'tv' && pct >= 99) {
+          const uiSettings = user?.preferences?.ui_settings_json ? JSON.parse(user.preferences.ui_settings_json) : {};
+          if (uiSettings.autoplay_next !== false) {
+             const currentSeasonData = metadata.seasons?.find(s => s.seasonNumber === currentSeason);
+             if (currentSeasonData && currentEpisodeIndex < currentSeasonData.episodes.length - 1) {
+                setCurrentEpisodeIndex(prev => prev + 1);
+                telemetry.track('episode_auto_advanced', { movieId: metadata.id, season: currentSeason, nextEpisode: currentEpisodeIndex + 1 });
+             } else if (currentSeasonData) {
+                // Next season
+                const nextSeason = metadata.seasons?.find(s => s.seasonNumber === currentSeason + 1);
+                if (nextSeason && nextSeason.episodes.length > 0) {
+                   setCurrentSeason(currentSeason + 1);
+                   setCurrentEpisodeIndex(0);
+                   telemetry.track('season_auto_advanced', { movieId: metadata.id, nextSeason: currentSeason + 1 });
+                }
+             }
+          }
         }
       }
 
@@ -406,7 +455,9 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
       const payload = {
         movieId: metadata.id,
         progressSeconds: current,
-        durationSeconds: total
+        durationSeconds: total,
+        season: currentEpisodeData ? currentSeason : undefined,
+        episode: currentEpisodeData ? currentEpisodeIndex + 1 : undefined
       };
       
       fetch('/api/user/watch', {
@@ -643,16 +694,63 @@ export default function VideoPlayer({ metadata }: VideoPlayerProps) {
               </div>
 
               <span className="video-title">
-                {metadata.title}
+                {metadata.title} {currentEpisodeData && `- S${currentSeason.toString().padStart(2, '0')}E${(currentEpisodeIndex + 1).toString().padStart(2, '0')}: ${currentEpisodeData.title}`}
                 {(() => {
                   const currentSec = (progress / 100) * (videoRef.current?.duration || 0);
-                  const ch = metadata.chapters?.find(c => currentSec >= c.start && currentSec < c.end);
+                  const ch = currentEpisodeData?.chapters?.find(c => currentSec >= c.start && currentSec < c.end) || metadata.chapters?.find(c => currentSec >= c.start && currentSec < c.end);
                   return ch ? <span className="chapter-title" style={{ opacity: 0.75, fontWeight: 400, marginLeft: 8 }}> — {ch.title}</span> : null;
                 })()}
               </span>
             </div>
             
             <div className="controls-right">
+              {metadata.type === 'tv' && metadata.seasons && (
+                <div className="cc-menu-container" style={{ position: 'relative' }} ref={episodesMenuRef}>
+                  {showEpisodesMenu && (
+                    <div className="cc-dropdown" style={{ minWidth: '200px', maxHeight: '300px', overflowY: 'auto' }}>
+                      <div className="menu-header">Episodes - S{currentSeason}</div>
+                      {metadata.seasons.find(s => s.seasonNumber === currentSeason)?.episodes.map((ep, idx) => (
+                        <button 
+                          key={ep.id}
+                          className={idx === currentEpisodeIndex ? 'lang-active' : ''}
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setCurrentEpisodeIndex(idx);
+                            setShowEpisodesMenu(false);
+                          }}
+                        >
+                          {idx + 1}. {ep.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <button 
+                    className="cc-button" 
+                    onClick={(e) => { e.stopPropagation(); setShowEpisodesMenu(prev => !prev); }}
+                    title="Episodes Menu"
+                  >
+                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>EP</div>
+                  </button>
+                  <button 
+                    className="cc-button" 
+                    onClick={() => {
+                      const currentSeasonData = metadata.seasons?.find(s => s.seasonNumber === currentSeason);
+                      if (currentSeasonData && currentEpisodeIndex < currentSeasonData.episodes.length - 1) {
+                         setCurrentEpisodeIndex(prev => prev + 1);
+                      } else if (currentSeasonData) {
+                         const nextSeason = metadata.seasons?.find(s => s.seasonNumber === currentSeason + 1);
+                         if (nextSeason && nextSeason.episodes.length > 0) {
+                            setCurrentSeason(currentSeason + 1);
+                            setCurrentEpisodeIndex(0);
+                         }
+                      }
+                    }}
+                    title="Next Episode"
+                  >
+                    <Play size={20} color="white" />
+                  </button>
+                </div>
+              )}
               {isUsingH264Fallback && (
                 <div 
                   className="h264-badge-container"

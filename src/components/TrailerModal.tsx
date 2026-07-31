@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Play, X, ThumbsUp, Volume2, VolumeX, Lock } from 'lucide-react';
+import { Play, X, ThumbsUp, Volume2, VolumeX, Lock, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
 import type { YouTubePlayer } from 'react-youtube';
@@ -22,6 +22,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
   const [isMuted, setIsMuted] = useState(true);
   const [volume, setVolume] = useState(0);
   const [isLiking, setIsLiking] = useState(false);
+  const [selectedSeason, setSelectedSeason] = useState(metadata.seasons && metadata.seasons.length > 0 ? metadata.seasons[0].seasonNumber : 1);
   const playerRef = useRef<YouTubePlayer | null>(null);
 
   const isLiked = likedMovies.includes(metadata.id);
@@ -150,7 +151,21 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
           </div>
 
           <div className="modal-actions">
-            {user ? (
+            {metadata.isComingSoon ? (
+              <button 
+                className="play-button" 
+                disabled 
+                style={{ 
+                  background: 'rgba(255, 42, 95, 0.2)', 
+                  color: '#ff2a5f', 
+                  border: '1px solid rgba(255, 42, 95, 0.5)',
+                  cursor: 'not-allowed'
+                }}
+              >
+                <Clock size={22} />
+                <span>Coming Soon</span>
+              </button>
+            ) : user ? (
               <button className="play-button" onClick={() => navigate(`/watch/${metadata.id}`)}>
                 <Play size={24} fill="black" color="black" />
                 <span>Play</span>
@@ -209,6 +224,64 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
             )}
           </div>
         </div>
+
+        {metadata.type === 'tv' && metadata.seasons && metadata.seasons.length > 0 && (
+          <div className="modal-episodes-section" style={{ padding: '0 3rem 2rem', marginTop: '1rem' }}>
+            <div className="modal-episodes-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Episodes</h3>
+              {metadata.seasons.length > 1 && (
+                <select 
+                  style={{ padding: '0.5rem 1rem', background: '#242424', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '1.1rem' }}
+                  value={selectedSeason}
+                  onChange={(e) => setSelectedSeason(Number(e.target.value))}
+                >
+                  {metadata.seasons.map(s => (
+                    <option key={s.seasonNumber} value={s.seasonNumber}>Season {s.seasonNumber}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <div className="modal-episodes-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {metadata.seasons.find(s => s.seasonNumber === selectedSeason)?.episodes.map((ep, idx) => (
+                <div 
+                  key={ep.id} 
+                  className="episode-item"
+                  style={{ 
+                    display: 'flex', 
+                    gap: '1rem', 
+                    padding: '1rem', 
+                    background: 'rgba(255,255,255,0.05)', 
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'background 0.2s'
+                  }}
+                  onClick={() => {
+                    if (metadata.isComingSoon) {
+                      alert("This episode is coming soon!");
+                    } else {
+                      navigate(`/watch/${metadata.id}?season=${selectedSeason}&episode=${idx + 1}`);
+                    }
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+                >
+                  <div className="episode-number" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#888', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {idx + 1}
+                  </div>
+                  <div className="episode-thumbnail" style={{ width: '130px', height: '73px', background: '#333', borderRadius: '4px', overflow: 'hidden', flexShrink: 0 }}>
+                    {ep.thumbnailUrl ? <img src={ep.thumbnailUrl} alt={ep.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#555' }}>No Image</div>}
+                  </div>
+                  <div className="episode-info" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                      <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>{ep.title}</span>
+                    </div>
+                    {ep.description && <p style={{ fontSize: '0.9rem', color: '#aaa', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ep.description}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
     </motion.div>
   );

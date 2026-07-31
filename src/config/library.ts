@@ -1,12 +1,34 @@
 const R2_CDN = "https://cdn.bio.sudothy.me";
 
-export interface MovieMetadata {
+export interface EpisodeMetadata {
   id: string;
+  title: string;
+  description?: string;
+  thumbnailUrl?: string;
   videoUrl: string;
   h264Url?: string;
   subtitles?: { lang: string; url: string }[];
   chapters?: { start: number; end: number; title: string }[];
+  hasIntro?: boolean;
+  introStart?: number;
+  introEnd?: number;
+}
+
+export interface SeasonMetadata {
+  seasonNumber: number;
+  episodes: EpisodeMetadata[];
+}
+
+export interface MovieMetadata {
+  id: string;
+  type?: 'movie' | 'tv';
+  videoUrl?: string; // Optional for TV shows
+  h264Url?: string;
+  subtitles?: { lang: string; url: string }[];
+  chapters?: { start: number; end: number; title: string }[];
   title: string;
+  description?: string;
+  thumbnailUrl?: string;
   year?: string;
   tmdbId?: number;
   hasIntro?: boolean;
@@ -14,6 +36,8 @@ export interface MovieMetadata {
   introEnd?: number;
   audioChannels?: string;
   spatialAudio?: boolean;
+  seasons?: SeasonMetadata[];
+  isComingSoon?: boolean;
 }
 
 export const fetchLibrary = async (): Promise<MovieMetadata[]> => {
