@@ -1,4 +1,5 @@
-import { getMovieMetadata, D1Database } from '../lib/db';
+import { getMovieMetadata, D1Database, getAdminSettings } from '../lib/db';
+import { authenticateSession } from '../lib/auth';
 
 const R2_CDN = "/api/media";
 
@@ -96,7 +97,61 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       }
     }
 
-    return new Response(JSON.stringify(Array.from(moviesMap.values())), {
+    const finalMovies = Array.from(moviesMap.values());
+    
+    // Default Hero & Algorithmic Recommendation logic
+    try {
+      const { user } = await authenticateSession(context.request, context.env.DB);
+      const adminSettings = await getAdminSettings(context.env.DB) as any;
+      const defaultHero = adminSettings.defaultHero;
+      const promotedWeights = adminSettings.promotedWeights || {};
+
+      let targetHero = defaultHero;
+
+      if (user && defaultHero) {
+        const history = await context.env.DB.prepare(
+          "SELECT completed, progress_seconds FROM user_watch_history WHERE user_id = ? AND movie_id = ?"
+        ).bind(user.id, defaultHero).first<{ completed: number, progress_seconds: number }>();
+
+        if (history && (history.completed === 1 || history.progress_seconds > 0)) {
+          const query = `
+            SELECT movie_id, 
+                   COUNT(*) as watch_count, 
+                   AVG(rating) as avg_rating, 
+                   SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as completion_rate
+            FROM user_watch_history 
+            WHERE movie_id != ? AND movie_id NOT IN (SELECT movie_id FROM user_watch_history WHERE user_id = ?)
+            GROUP BY movie_id
+          `;
+          const stats = await context.env.DB.prepare(query).bind(defaultHero, user.id).all();
+          
+          let bestScore = -1;
+          let algorithmicHero = null;
+          for (const row of stats.results as any[]) {
+            const rawScore = (row.watch_count || 0) + ((row.avg_rating || 0) * 2) + ((row.completion_rate || 0) * 10);
+            const multiplier = promotedWeights[row.movie_id] || 1;
+            const finalScore = rawScore * multiplier;
+            if (finalScore > bestScore) {
+              bestScore = finalScore;
+              algorithmicHero = row.movie_id;
+            }
+          }
+          if (algorithmicHero) targetHero = algorithmicHero;
+        }
+      }
+
+      if (targetHero) {
+        const heroIndex = finalMovies.findIndex(m => m.id === targetHero);
+        if (heroIndex > -1) {
+          const [heroMovie] = finalMovies.splice(heroIndex, 1);
+          finalMovies.unshift(heroMovie);
+        }
+      }
+    } catch (e) {
+      console.error("Hero selection error:", e);
+    }
+
+    return new Response(JSON.stringify(finalMovies), {
       headers: {
         "Content-Type": "application/json",
         ...corsHeaders

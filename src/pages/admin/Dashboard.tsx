@@ -3,14 +3,19 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, Plus, X, Globe, Lock } from 'lucide-react';
 
 export default function Dashboard() {
-  const [settings, setSettings] = useState({ vpnCheckEnabled: true, allowlistIps: [] as string[] });
+  const [settings, setSettings] = useState({ vpnCheckEnabled: true, allowlistIps: [] as string[], defaultHero: '', promotedWeights: {} as Record<string, number> });
   const [newIp, setNewIp] = useState('');
   const [saving, setSaving] = useState(false);
+  const [movies, setMovies] = useState<{id: string, title: string}[]>([]);
 
   useEffect(() => {
     fetch('/api/admin/settings')
       .then(r => r.json())
-      .then(d => setSettings(d))
+      .then(d => setSettings({ vpnCheckEnabled: true, allowlistIps: [], defaultHero: '', promotedWeights: {}, ...d }))
+      .catch(console.error);
+    fetch('/api/movies')
+      .then(r => r.json())
+      .then(d => setMovies(d))
       .catch(console.error);
   }, []);
 
@@ -145,6 +150,63 @@ export default function Dashboard() {
                 No strict IPs configured. System is open to all non-VPN traffic.
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginTop: '2rem' }}>
+        <div style={cardStyle}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: '#ff2a5f' }}>
+            <Globe size={24} />
+            <h3 style={{ fontSize: '1.5rem', margin: 0, fontWeight: 600 }}>Hero Settings</h3>
+          </div>
+          <p style={{ color: '#888', marginBottom: '2rem', lineHeight: 1.6 }}>
+            Select the default hero movie. You can also assign multiplier weights to specific movies to boost them in the recommendation algorithm for users who are already watching the default hero.
+          </p>
+
+          <div style={{ marginBottom: '2rem' }}>
+            <label style={{ display: 'block', color: '#fff', marginBottom: '0.5rem', fontWeight: 600 }}>Default Hero</label>
+            <select
+              value={settings.defaultHero || ''}
+              onChange={e => saveSettings({ ...settings, defaultHero: e.target.value })}
+              disabled={saving}
+              style={{
+                width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '1rem', outline: 'none', cursor: 'pointer'
+              }}
+            >
+              <option value="">-- Select a Movie --</option>
+              {movies.map(m => (
+                <option key={m.id} value={m.id}>{m.title}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label style={{ display: 'block', color: '#fff', marginBottom: '1rem', fontWeight: 600 }}>Promoted Movies (Multipliers)</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {movies.map(m => {
+                const weight = settings.promotedWeights?.[m.id] || 1;
+                return (
+                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                    <span style={{ color: '#ccc' }}>{m.title}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <span style={{ color: '#888', fontSize: '0.9rem' }}>Weight: {weight}x</span>
+                      <input 
+                        type="range" 
+                        min="0" max="5" step="0.5" 
+                        value={weight} 
+                        onChange={e => {
+                          const newWeights = { ...settings.promotedWeights, [m.id]: parseFloat(e.target.value) };
+                          saveSettings({ ...settings, promotedWeights: newWeights });
+                        }}
+                        disabled={saving}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
