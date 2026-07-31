@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { Search } from 'lucide-react';
 import { fetchLibrary } from '../config/library';
-import { searchMovie, getMovieVideos } from '../services/tmdb';
+import { searchMovie, searchTV, getMovieVideos } from '../services/tmdb';
 import Navigation from '../components/Navigation';
 import MovieCard from '../components/MovieCard';
 import TrailerModal from '../components/TrailerModal';
@@ -28,9 +28,17 @@ export default function Home() {
     queryFn: async () => {
       if (!library) return [];
       const fetches = library.map(async (meta) => {
-        const tmdbData = await searchMovie(meta.title, meta.year || '');
+        let tmdbData: TMDBMovie | null = null;
+
+        if (meta.type === 'tv') {
+          tmdbData = await searchTV(meta.title, meta.year || '');
+        }
+
+        if (!tmdbData) {
+          tmdbData = await searchMovie(meta.title, meta.year || '');
+        }
+
         if (tmdbData) {
-          // BUG-004: spread instead of mutating the cached meta object directly
           const newMeta: MovieMetadata = { ...meta, tmdbId: tmdbData.id };
           return { meta: newMeta, tmdbData };
         }

@@ -46,6 +46,25 @@ export const searchMovie = async (title: string, year: string): Promise<TMDBMovi
   return data.results?.[0] || null;
 };
 
+export const searchTV = async (name: string, year: string): Promise<TMDBMovie | null> => {
+  const query = encodeURIComponent(name);
+  const yearParam = year ? `&first_air_date_year=${year}` : '';
+  const res = await fetch(`${TMDB_BASE_URL}/search/tv?query=${query}${yearParam}`, fetchConfig);
+  if (!res.ok) throw new Error("BIO-006: Failed to search TV show");
+  const data = await res.json();
+  const result = data.results?.[0] || null;
+  if (!result) return null;
+  return {
+    id: result.id,
+    title: result.name || result.title || name,
+    overview: result.overview || '',
+    poster_path: result.poster_path || '',
+    backdrop_path: result.backdrop_path || '',
+    release_date: result.first_air_date || '',
+    vote_average: result.vote_average || 0
+  };
+};
+
 export interface TMDBSearchResult {
   id: number;
   title?: string;
