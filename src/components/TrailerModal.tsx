@@ -30,30 +30,36 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
   const { data: tvDetails } = useQuery({
     queryKey: ['tvDetails', movie.id],
     queryFn: () => getTVDetails(movie.id),
-    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id && (!metadata.seasons || metadata.seasons.length === 0)
+    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id
   });
 
   const { data: seasonDetails } = useQuery({
     queryKey: ['tvSeasonDetails', movie.id, selectedSeason],
     queryFn: () => getTVSeasonDetails(movie.id, selectedSeason),
-    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id && (!metadata.seasons || metadata.seasons.length === 0)
+    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id
   });
 
   let effectiveSeasons = metadata.seasons;
 
-  if ((!effectiveSeasons || effectiveSeasons.length === 0) && tvDetails) {
+  if (tvDetails) {
     const seasonsList = (tvDetails.seasons || []).filter((s: any) => s.season_number > 0);
-    const episodesList = (seasonDetails?.episodes || []).map((ep: any) => ({
-      id: `ep-${ep.id}`,
-      title: `E${ep.episode_number}: ${ep.name}`,
-      description: ep.overview,
-      thumbnailUrl: getImageUrl(ep.still_path, 'w500'),
-      videoUrl: ''
-    }));
+    const episodesList = (seasonDetails?.episodes || []).map((ep: any) => {
+      const bucketEp = metadata.seasons?.find(s => s.seasonNumber === selectedSeason)?.episodes.find(e => e.episodeNumber === ep.episode_number);
+      const isAvailable = !metadata.isComingSoon && !!bucketEp?.videoUrl;
+      return {
+        id: `ep-${ep.id}`,
+        episodeNumber: ep.episode_number,
+        title: `E${ep.episode_number}: ${ep.name}`,
+        description: ep.overview,
+        thumbnailUrl: getImageUrl(ep.still_path, 'w500'),
+        videoUrl: bucketEp?.videoUrl || '',
+        isAvailable
+      };
+    });
 
     effectiveSeasons = seasonsList.map((s: any) => ({
       seasonNumber: s.season_number,
-      episodes: s.season_number === selectedSeason ? episodesList : []
+      episodes: s.season_number === selectedSeason ? episodesList : (metadata.seasons?.find(b => b.seasonNumber === s.season_number)?.episodes || [])
     }));
   }
 
@@ -304,16 +310,21 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
                     padding: '1rem', 
                     background: 'rgba(255,255,255,0.05)', 
                     borderRadius: '8px',
-                    cursor: metadata.isComingSoon ? 'default' : 'pointer',
+                    cursor: (ep.isAvailable ?? !metadata.isComingSoon) ? 'pointer' : 'default',
+                    opacity: (ep.isAvailable ?? !metadata.isComingSoon) ? 1 : 0.55,
                     transition: 'background 0.2s'
                   }}
                   onClick={() => {
-                    if (metadata.isComingSoon) {
+                    if (ep.isAvailable === false || metadata.isComingSoon) {
                       return;
                     }
                     navigate(`/watch/${metadata.id}?season=${selectedSeason}&episode=${idx + 1}`);
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+                  onMouseEnter={(e) => {
+                    if (ep.isAvailable ?? !metadata.isComingSoon) {
+                      e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
+                    }
+                  }}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
                 >
                   <div className="episode-number" style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#888', minWidth: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -325,6 +336,11 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
                   <div className="episode-info" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                       <span style={{ fontWeight: 600, fontSize: '1.1rem' }}>{ep.title}</span>
+                      {(ep.isAvailable === false || metadata.isComingSoon) && (
+                        <span style={{ fontSize: '0.75rem', background: 'rgba(255, 42, 95, 0.2)', color: '#ff2a5f', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(255, 42, 95, 0.4)' }}>
+                          Coming Soon
+                        </span>
+                      )}
                     </div>
                     {ep.description && <p style={{ fontSize: '0.9rem', color: '#aaa', margin: 0, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{ep.description}</p>}
                   </div>

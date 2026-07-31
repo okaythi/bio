@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -25,21 +25,39 @@ const mkvFiles = getMkvFiles(moviesDir);
 
 console.log(`Found ${mkvFiles.length} MKV files to process.`);
 
+function isValidMp4(mp4Path) {
+  try {
+    const stat = fs.statSync(mp4Path);
+    return stat.isFile() && stat.size > 500 * 1024 * 1024;
+  } catch (e) {
+    return false;
+  }
+}
+
 async function processFile(filePath) {
   const dir = path.dirname(filePath);
   const baseName = path.basename(filePath, '.mkv');
   
   const mp4Path = path.join(dir, `${baseName}.mp4`);
+  const tmpMp4Path = path.join(dir, `${baseName}.tmp.mp4`);
   const srtPath = path.join(dir, `${baseName}.srt`);
 
   if (fs.existsSync(mp4Path)) {
-    console.log(`Skipping ${baseName} as mp4 already exists.`);
-    return;
+    if (isValidMp4(mp4Path)) {
+      console.log(`Skipping ${baseName} as valid mp4 already exists.`);
+      return;
+    } else {
+      console.log(`Incomplete MP4 detected for ${baseName}. Removing and re-transcoding...`);
+      fs.unlinkSync(mp4Path);
+    }
+  }
+
+  if (fs.existsSync(tmpMp4Path)) {
+    fs.unlinkSync(tmpMp4Path);
   }
 
   console.log(`\nProcessing: ${baseName}`);
 
-  // 1. Extract subtitles
   console.log(`Extracting subtitles for ${baseName}...`);
   await new Promise((resolve, reject) => {
     const ffmpegSub = spawn('ffmpeg', [
@@ -55,14 +73,13 @@ async function processFile(filePath) {
     });
   });
 
-  // 2. Transcode video and audio
   console.log(`Transcoding video and audio for ${baseName}...`);
   await new Promise((resolve, reject) => {
     const ffmpegVid = spawn('ffmpeg', [
       '-y',
       '-i', filePath,
-      '-map', '0:v',
-      '-map', '0:a:1', // Japanese EAC3 track
+      '-map', '0:v:0',
+      '-map', '0:a:1',
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-crf', '23',
@@ -70,10 +87,9 @@ async function processFile(filePath) {
       '-c:a', 'aac',
       '-b:a', '192k',
       '-movflags', '+faststart',
-      mp4Path
+      tmpMp4Path
     ]);
     
-    // Log progress occasionally
     let lastLogTime = Date.now();
     ffmpegVid.stderr.on('data', (data) => {
       if (Date.now() - lastLogTime > 15000) {
@@ -88,9 +104,12 @@ async function processFile(filePath) {
 
     ffmpegVid.on('close', (code) => {
       if (code === 0) {
+         if (fs.existsSync(mp4Path)) fs.unlinkSync(mp4Path);
+         fs.renameSync(tmpMp4Path, mp4Path);
          console.log(`Finished ${baseName}.mp4 successfully.`);
          resolve();
       } else {
+         if (fs.existsSync(tmpMp4Path)) fs.unlinkSync(tmpMp4Path);
          reject(new Error(`Video transcoding failed with code ${code}`));
       }
     });

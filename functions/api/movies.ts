@@ -8,13 +8,30 @@ export interface Env {
   DB: D1Database;
 }
 
+interface EpisodeItem {
+  id: string;
+  episodeNumber: number;
+  seasonNumber: number;
+  title: string;
+  videoUrl: string;
+  subtitles: { lang: string; url: string }[];
+  isAvailable: boolean;
+}
+
+interface SeasonItem {
+  seasonNumber: number;
+  episodes: EpisodeItem[];
+}
+
 interface MovieItem {
   id: string;
   title: string;
   year: string;
+  type?: 'movie' | 'tv';
   videoUrl: string;
   h264Url?: string;
   subtitles: { lang: string; url: string }[];
+  seasons?: SeasonItem[];
   chapters?: { start: number; end: number; title: string }[];
   audioChannels?: string;
   spatialAudio?: boolean;
@@ -63,8 +80,10 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         id: folderName,
         title,
         year,
+        type: 'movie',
         videoUrl: "",
         subtitles: [],
+        seasons: [],
         chapters: dbMeta?.chapters,
         audioChannels: dbMeta?.audioChannels,
         spatialAudio: dbMeta?.spatialAudio
@@ -84,16 +103,65 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       const fileName = parts[1];
       const url = `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
 
-      if (obj.key.endsWith(".mp4") || obj.key.endsWith(".mkv")) {
-        if (fileName.includes(".h264.")) {
-          movie.h264Url = url;
-        } else {
-          movie.videoUrl = url;
+      const tvMatch = fileName.match(/^S(\d{1,2})E(\d{1,2})(?:[-_\s](.*?))?\.(mp4|mkv|srt)$/i);
+
+      if (tvMatch) {
+        movie.type = 'tv';
+        const seasonNum = parseInt(tvMatch[1], 10);
+        const epNum = parseInt(tvMatch[2], 10);
+        const rawEpTitle = tvMatch[3] ? tvMatch[3].trim() : `Episode ${epNum}`;
+        const ext = tvMatch[4].toLowerCase();
+
+        let season = movie.seasons!.find(s => s.seasonNumber === seasonNum);
+        if (!season) {
+          season = { seasonNumber: seasonNum, episodes: [] };
+          movie.seasons!.push(season);
         }
-      } else if (obj.key.endsWith(".srt")) {
-        const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
-        const lang = langMatch ? langMatch[1] : "en";
-        movie.subtitles.push({ lang, url });
+
+        let ep = season.episodes.find(e => e.episodeNumber === epNum);
+        if (!ep) {
+          ep = {
+            id: `s${seasonNum}e${epNum}`,
+            episodeNumber: epNum,
+            seasonNumber: seasonNum,
+            title: rawEpTitle,
+            videoUrl: '',
+            subtitles: [],
+            isAvailable: false
+          };
+          season.episodes.push(ep);
+        }
+
+        if (ext === 'mp4' || ext === 'mkv') {
+          ep.videoUrl = url;
+          ep.isAvailable = true;
+          if (!movie.videoUrl) movie.videoUrl = url;
+        } else if (ext === 'srt') {
+          const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
+          const lang = langMatch ? langMatch[1] : "en";
+          ep.subtitles.push({ lang, url });
+        }
+      } else {
+        if (obj.key.endsWith(".mp4") || obj.key.endsWith(".mkv")) {
+          if (fileName.includes(".h264.")) {
+            movie.h264Url = url;
+          } else {
+            movie.videoUrl = url;
+          }
+        } else if (obj.key.endsWith(".srt")) {
+          const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
+          const lang = langMatch ? langMatch[1] : "en";
+          movie.subtitles.push({ lang, url });
+        }
+      }
+    }
+
+    for (const movie of moviesMap.values()) {
+      if (movie.seasons && movie.seasons.length > 0) {
+        movie.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+        for (const s of movie.seasons) {
+          s.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+        }
       }
     }
 
