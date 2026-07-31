@@ -146,6 +146,15 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
   useEffect(() => { selectedLangRef.current = selectedLang; }, [selectedLang]);
 
   useEffect(() => {
+    if (metadata.type === 'tv' && currentEpisodeData) {
+      localStorage.setItem(`bio-last-episode-${metadata.id}`, JSON.stringify({
+        season: currentSeason,
+        episode: currentEpisodeIndex + 1
+      }));
+    }
+  }, [metadata.id, metadata.type, currentSeason, currentEpisodeIndex, currentEpisodeData]);
+
+  useEffect(() => {
     const isPC = window.matchMedia('(hover: hover) and (pointer: fine)').matches;
     const timeoutDuration = isPC ? 3030 : 2500;
 
@@ -694,7 +703,7 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
               </div>
 
               <span className="video-title">
-                {metadata.title} {currentEpisodeData && `- S${currentSeason.toString().padStart(2, '0')}E${(currentEpisodeIndex + 1).toString().padStart(2, '0')}: ${currentEpisodeData.title}`}
+                {metadata.title} {currentEpisodeData && `- Season ${currentSeason} Episode ${currentEpisodeIndex + 1}: ${currentEpisodeData.title}`}
                 {(() => {
                   const currentSec = (progress / 100) * (videoRef.current?.duration || 0);
                   const ch = currentEpisodeData?.chapters?.find(c => currentSec >= c.start && currentSec < c.end) || metadata.chapters?.find(c => currentSec >= c.start && currentSec < c.end);

@@ -59,6 +59,26 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
 
   const isLiked = likedMovies.includes(metadata.id);
 
+  const savedLastEpStr = typeof window !== 'undefined' ? localStorage.getItem(`bio-last-episode-${metadata.id}`) : null;
+  const savedLastEp = savedLastEpStr ? JSON.parse(savedLastEpStr) : null;
+  const savedProgressStr = typeof window !== 'undefined' ? localStorage.getItem(`bio-progress-${metadata.id}`) : null;
+  const savedProgress = savedProgressStr ? parseFloat(savedProgressStr) : 0;
+
+  let playButtonText = 'Play';
+  let playTargetUrl = `/watch/${metadata.id}`;
+
+  if (metadata.type === 'tv' || (effectiveSeasons && effectiveSeasons.length > 0)) {
+    if (savedLastEp && savedLastEp.season && savedLastEp.episode) {
+      playButtonText = `Resume Season ${savedLastEp.season} Episode ${savedLastEp.episode}`;
+      playTargetUrl = `/watch/${metadata.id}?season=${savedLastEp.season}&episode=${savedLastEp.episode}`;
+    } else {
+      playButtonText = 'Play';
+      playTargetUrl = `/watch/${metadata.id}?season=1&episode=1`;
+    }
+  } else if (savedProgress > 2) {
+    playButtonText = 'Resume';
+  }
+
   const onReady = (event: { target: YouTubePlayer }) => {
     playerRef.current = event.target;
     event.target.mute();
@@ -198,9 +218,9 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
                 <span>Coming Soon</span>
               </button>
             ) : user ? (
-              <button className="play-button" onClick={() => navigate(`/watch/${metadata.id}`)}>
+              <button className="play-button" onClick={() => navigate(playTargetUrl)}>
                 <Play size={24} fill="black" color="black" />
-                <span>Play</span>
+                <span>{playButtonText}</span>
               </button>
             ) : (
               <button
@@ -284,15 +304,14 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
                     padding: '1rem', 
                     background: 'rgba(255,255,255,0.05)', 
                     borderRadius: '8px',
-                    cursor: 'pointer',
+                    cursor: metadata.isComingSoon ? 'default' : 'pointer',
                     transition: 'background 0.2s'
                   }}
                   onClick={() => {
-                    if (metadata.isComingSoon || !ep.videoUrl) {
-                      alert("This episode is coming soon!");
-                    } else {
-                      navigate(`/watch/${metadata.id}?season=${selectedSeason}&episode=${idx + 1}`);
+                    if (metadata.isComingSoon) {
+                      return;
                     }
+                    navigate(`/watch/${metadata.id}?season=${selectedSeason}&episode=${idx + 1}`);
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
                   onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
