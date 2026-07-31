@@ -48,6 +48,11 @@ export default function Home() {
     enabled: !!selectedMovie
   });
 
+  const { data: settings } = useQuery({
+    queryKey: ['adminSettings'],
+    queryFn: () => fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ comingSoonList: [] }))
+  });
+
   const trailerKey = videos?.find(v => v.type === 'Trailer' && v.site === 'YouTube')?.key;
 
   const handleCardClick = (movie: TMDBMovie, meta: MovieMetadata) => {
@@ -75,11 +80,6 @@ export default function Home() {
 
   const continueWatching = progressMovies.filter(m => m.progress > 2.77 && m.progress < 95);
   const availableNow = progressMovies.filter(m => !(m.progress > 2.77 && m.progress < 95));
-
-  const { data: settings } = useQuery({
-    queryKey: ['adminSettings'],
-    queryFn: () => fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ comingSoonList: [] }))
-  });
 
   const rawComingSoon = settings?.comingSoonList || [];
   const comingSoonFiltered: { meta: MovieMetadata; tmdbData: TMDBMovie }[] = rawComingSoon.filter((cs: any) => {
