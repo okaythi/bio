@@ -3,7 +3,9 @@ import { motion } from 'framer-motion';
 import { Play, X, ThumbsUp, Volume2, VolumeX, Lock, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import YouTube from 'react-youtube';
+import { useQuery } from '@tanstack/react-query';
 import type { YouTubePlayer } from 'react-youtube';
+import { getTVDetails, getTVSeasonDetails, getImageUrl } from '../services/tmdb';
 import type { TMDBMovie } from '../services/tmdb';
 import type { MovieMetadata } from '../config/library';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +26,36 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
   const [isLiking, setIsLiking] = useState(false);
   const [selectedSeason, setSelectedSeason] = useState(metadata.seasons && metadata.seasons.length > 0 ? metadata.seasons[0].seasonNumber : 1);
   const playerRef = useRef<YouTubePlayer | null>(null);
+
+  const { data: tvDetails } = useQuery({
+    queryKey: ['tvDetails', movie.id],
+    queryFn: () => getTVDetails(movie.id),
+    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id && (!metadata.seasons || metadata.seasons.length === 0)
+  });
+
+  const { data: seasonDetails } = useQuery({
+    queryKey: ['tvSeasonDetails', movie.id, selectedSeason],
+    queryFn: () => getTVSeasonDetails(movie.id, selectedSeason),
+    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id && (!metadata.seasons || metadata.seasons.length === 0)
+  });
+
+  let effectiveSeasons = metadata.seasons;
+
+  if ((!effectiveSeasons || effectiveSeasons.length === 0) && tvDetails) {
+    const seasonsList = (tvDetails.seasons || []).filter((s: any) => s.season_number > 0);
+    const episodesList = (seasonDetails?.episodes || []).map((ep: any) => ({
+      id: `ep-${ep.id}`,
+      title: `E${ep.episode_number}: ${ep.name}`,
+      description: ep.overview,
+      thumbnailUrl: getImageUrl(ep.still_path, 'w500'),
+      videoUrl: ''
+    }));
+
+    effectiveSeasons = seasonsList.map((s: any) => ({
+      seasonNumber: s.season_number,
+      episodes: s.season_number === selectedSeason ? episodesList : []
+    }));
+  }
 
   const isLiked = likedMovies.includes(metadata.id);
 
@@ -225,24 +257,24 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
           </div>
         </div>
 
-        {metadata.type === 'tv' && metadata.seasons && metadata.seasons.length > 0 && (
+        {effectiveSeasons && effectiveSeasons.length > 0 && (
           <div className="modal-episodes-section" style={{ padding: '0 3rem 2rem', marginTop: '1rem' }}>
             <div className="modal-episodes-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 600 }}>Episodes</h3>
-              {metadata.seasons.length > 1 && (
+              {effectiveSeasons.length > 1 && (
                 <select 
                   style={{ padding: '0.5rem 1rem', background: '#242424', color: 'white', border: '1px solid #333', borderRadius: '4px', fontSize: '1.1rem' }}
                   value={selectedSeason}
                   onChange={(e) => setSelectedSeason(Number(e.target.value))}
                 >
-                  {metadata.seasons.map(s => (
+                  {effectiveSeasons.map(s => (
                     <option key={s.seasonNumber} value={s.seasonNumber}>Season {s.seasonNumber}</option>
                   ))}
                 </select>
               )}
             </div>
             <div className="modal-episodes-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {metadata.seasons.find(s => s.seasonNumber === selectedSeason)?.episodes.map((ep, idx) => (
+              {effectiveSeasons.find(s => s.seasonNumber === selectedSeason)?.episodes.map((ep, idx) => (
                 <div 
                   key={ep.id} 
                   className="episode-item"
@@ -256,7 +288,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
                     transition: 'background 0.2s'
                   }}
                   onClick={() => {
-                    if (metadata.isComingSoon) {
+                    if (metadata.isComingSoon || !ep.videoUrl) {
                       alert("This episode is coming soon!");
                     } else {
                       navigate(`/watch/${metadata.id}?season=${selectedSeason}&episode=${idx + 1}`);

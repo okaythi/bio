@@ -71,6 +71,18 @@ export const searchMulti = async (query: string): Promise<TMDBSearchResult[]> =>
   return results.filter(r => r.media_type === 'movie' || r.media_type === 'tv');
 };
 
+export const getTVDetails = async (tmdbId: number) => {
+  const res = await fetch(`${TMDB_BASE_URL}/tv/${tmdbId}`, fetchConfig);
+  if (!res.ok) throw new Error("Failed to fetch TV details");
+  return res.json();
+};
+
+export const getTVSeasonDetails = async (tmdbId: number, seasonNumber: number) => {
+  const res = await fetch(`${TMDB_BASE_URL}/tv/${tmdbId}/season/${seasonNumber}`, fetchConfig);
+  if (!res.ok) throw new Error("Failed to fetch TV season details");
+  return res.json();
+};
+
 export const getImageUrl = (path: string, size: "original" | "w500" = "original") => {
   if (!path) return "";
   return `https://image.tmdb.org/t/p/${size}${path}`;
