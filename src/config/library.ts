@@ -2,6 +2,8 @@ const R2_CDN = "https://cdn.bio.sudothy.me";
 
 export interface EpisodeMetadata {
   id: string;
+  episodeNumber?: number;
+  seasonNumber?: number;
   title: string;
   description?: string;
   thumbnailUrl?: string;
@@ -12,6 +14,7 @@ export interface EpisodeMetadata {
   hasIntro?: boolean;
   introStart?: number;
   introEnd?: number;
+  isAvailable?: boolean;
 }
 
 export interface SeasonMetadata {
