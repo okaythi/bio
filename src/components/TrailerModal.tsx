@@ -27,16 +27,18 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
   const [selectedSeason, setSelectedSeason] = useState(metadata.seasons && metadata.seasons.length > 0 ? metadata.seasons[0].seasonNumber : 1);
   const playerRef = useRef<YouTubePlayer | null>(null);
 
+  const isTVShow = metadata.type === 'tv' || (metadata.seasons && metadata.seasons.length > 0);
+
   const { data: tvDetails } = useQuery({
     queryKey: ['tvDetails', movie.id],
     queryFn: () => getTVDetails(movie.id),
-    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id
+    enabled: isTVShow && !!movie.id
   });
 
   const { data: seasonDetails } = useQuery({
     queryKey: ['tvSeasonDetails', movie.id, selectedSeason],
     queryFn: () => getTVSeasonDetails(movie.id, selectedSeason),
-    enabled: (metadata.type === 'tv' || !metadata.type) && !!movie.id
+    enabled: isTVShow && !!movie.id
   });
 
   let effectiveSeasons = metadata.seasons;
@@ -45,13 +47,14 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
     const seasonsList = (tvDetails.seasons || []).filter((s: any) => s.season_number > 0);
     const episodesList = (seasonDetails?.episodes || []).map((ep: any) => {
       const bucketEp = metadata.seasons?.find(s => s.seasonNumber === selectedSeason)?.episodes.find(e => e.episodeNumber === ep.episode_number);
+      const titleText = ep.name || bucketEp?.title || `Episode ${ep.episode_number}`;
       const isAvailable = !metadata.isComingSoon && !!bucketEp?.videoUrl;
       return {
         id: `ep-${ep.id}`,
         episodeNumber: ep.episode_number,
-        title: `E${ep.episode_number}: ${ep.name}`,
+        title: `E${ep.episode_number}: ${titleText.replace(/\.en$/i, '')}`,
         description: ep.overview,
-        thumbnailUrl: getImageUrl(ep.still_path, 'w500'),
+        thumbnailUrl: getImageUrl(ep.still_path, 'w500') || bucketEp?.thumbnailUrl || '',
         videoUrl: bucketEp?.videoUrl || '',
         isAvailable
       };

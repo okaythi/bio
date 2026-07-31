@@ -109,8 +109,12 @@ export const onRequest: PagesFunction<Env> = async (context) => {
         movie.type = 'tv';
         const seasonNum = parseInt(tvMatch[1], 10);
         const epNum = parseInt(tvMatch[2], 10);
-        const rawEpTitle = tvMatch[3] ? tvMatch[3].trim() : `Episode ${epNum}`;
+        let rawEpTitle = tvMatch[3] ? tvMatch[3].trim() : `Episode ${epNum}`;
         const ext = tvMatch[4].toLowerCase();
+
+        if (rawEpTitle && ext === 'srt') {
+          rawEpTitle = rawEpTitle.replace(/\.(?:[a-z]{2,3}(?:-[a-z]{2,4})?)$/i, '').trim();
+        }
 
         let season = movie.seasons!.find(s => s.seasonNumber === seasonNum);
         if (!season) {
