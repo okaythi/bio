@@ -70,9 +70,8 @@ export const getTierColor = (tier: string | undefined): string => {
 
 export const getTierLabel = (tier: string | undefined): string => {
   if (tier === 'vip_platinum') return 'Platinum';
-  if (tier === 'vip_gold') return 'Gold';
+  if (tier === 'vip_gold' || tier === 'vip') return 'Gold';
   if (tier === 'vip_silver') return 'Silver';
-  if (tier === 'vip') return 'VIP'; // Legacy fallback
   return 'Free';
 };
 

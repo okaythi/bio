@@ -99,8 +99,8 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
       await context.env.DB.prepare(`
         INSERT INTO user_subscriptions (user_id, plan_tier, status, expires_at, updated_at)
-        VALUES (?, 'vip', 'active', ?, CURRENT_TIMESTAMP)
-        ON CONFLICT(user_id) DO UPDATE SET plan_tier = 'vip', status = 'active', expires_at = excluded.expires_at, updated_at = CURRENT_TIMESTAMP
+        VALUES (?, 'vip_gold', 'active', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET plan_tier = 'vip_gold', status = 'active', expires_at = excluded.expires_at, updated_at = CURRENT_TIMESTAMP
       `).bind(targetUserId, expDate).run();
     } else {
       await context.env.DB.prepare(`

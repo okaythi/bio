@@ -49,10 +49,13 @@ export async function getUserVipStatus(db: D1Database, userId: string): Promise<
 
   const hasVipFlag = flags.includes('vip');
 
+  let rawTier = sub?.plan_tier || 'free';
+  if (rawTier === 'vip') rawTier = 'vip_gold';
+
   if (!sub) {
     return {
       isVip: hasVipFlag,
-      planTier: hasVipFlag ? 'vip' : 'free',
+      planTier: hasVipFlag ? 'vip_gold' : 'free',
       status: 'active',
       expiresAt: null
     };
@@ -60,11 +63,11 @@ export async function getUserVipStatus(db: D1Database, userId: string): Promise<
 
   const now = new Date();
   const isExpired = sub.expires_at ? new Date(sub.expires_at) < now : false;
-  const isTierVip = (sub.plan_tier === 'vip' || sub.plan_tier === 'premium') && sub.status === 'active' && !isExpired;
+  const isTierVip = (rawTier.startsWith('vip') || rawTier === 'premium') && sub.status === 'active' && !isExpired;
 
   return {
     isVip: isTierVip || hasVipFlag,
-    planTier: isExpired ? 'free' : (isTierVip ? sub.plan_tier : (hasVipFlag ? 'vip' : (sub.plan_tier || 'free'))),
+    planTier: isExpired ? 'free' : (isTierVip ? rawTier : (hasVipFlag ? 'vip_gold' : rawTier)),
     status: isExpired ? 'expired' : (sub.status || 'active'),
     expiresAt: sub.expires_at
   };

@@ -104,7 +104,7 @@ export default function AuthTab({
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <input 
               type="text" 
-              placeholder="e.g. VIP-TEST2026" 
+              placeholder="Enter VIP Key" 
               value={vipCode} 
               onChange={e => setVipCode(e.target.value)}
               style={{
