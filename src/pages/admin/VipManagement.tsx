@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Crown, Key, ListOrdered, Sparkles, RefreshCw, UserCheck, ThumbsUp } from 'lucide-react';
-
+import { Crown, Key, ListOrdered, Sparkles, RefreshCw, UserCheck, ThumbsUp, Loader2 } from 'lucide-react';
 
 export default function VipManagement() {
   const [activeTab, setActiveTab] = useState<'members' | 'codes' | 'requests'>('members');
@@ -8,6 +7,7 @@ export default function VipManagement() {
   const [codes, setCodes] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<{ userId: string; action: string } | null>(null);
 
   // Pass code generator form
   const [prefix, setPrefix] = useState('VIP');
@@ -82,22 +82,7 @@ export default function VipManagement() {
   const setTier = async (userId: string, tier: string, days: number = 30) => {
     const expDate = days > 0 ? new Date(Date.now() + days * 86400 * 1000).toISOString() : null;
 
-    // Optimistic UI update
-    setUsers(prev => prev.map(u => {
-      if (u.id === userId) {
-        const currentFlags = u.flags || [];
-        const newFlags = tier === 'free' ? currentFlags.filter((f: string) => f !== 'vip') : Array.from(new Set([...currentFlags, 'vip']));
-        return {
-          ...u,
-          plan_tier: tier,
-          status: tier === 'free' ? 'canceled' : 'active',
-          expires_at: expDate,
-          flags: newFlags
-        };
-      }
-      return u;
-    }));
-
+    setActionLoading({ userId, action: tier });
     try {
       await fetch(`/api/admin/users/${userId}`, {
         method: 'PUT',
@@ -114,10 +99,10 @@ export default function VipManagement() {
     } catch (e) {
       console.error(e);
     } finally {
-      fetchData();
+      await fetchData();
+      setActionLoading(null);
     }
   };
-
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%' }}>
@@ -201,7 +186,7 @@ export default function VipManagement() {
         {activeTab === 'members' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem' }}>
             {users.map(u => {
-              const isUserVip = (u.flags && u.flags.includes('vip')) || u.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590';
+              const isUserVip = (u.flags && u.flags.includes('vip')) || (u.plan_tier && u.plan_tier !== 'free');
               return (
                 <div 
                   key={u.id}
@@ -233,31 +218,49 @@ export default function VipManagement() {
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: 'auto' }}>
                     <button
                       onClick={() => setTier(u.id, 'vip_silver', 30)}
+                      disabled={!!actionLoading}
                       style={{
                         flex: 1, padding: '0.5rem', borderRadius: '8px', border: 'none',
                         background: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
-                        color: '#000', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'
+                        color: '#000', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '34px'
                       }}
                     >
-                      +30 Days VIP
+                      {actionLoading?.userId === u.id && actionLoading?.action === 'vip_silver' ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        '+30 Days VIP'
+                      )}
                     </button>
                     <button
                       onClick={() => setTier(u.id, 'vip_gold', 365)}
+                      disabled={!!actionLoading}
                       style={{
                         flex: 1, padding: '0.5rem', borderRadius: '8px', border: '1px solid rgba(255,215,0,0.5)',
-                        background: 'rgba(255,215,0,0.1)', color: '#ffd700', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'
+                        background: 'rgba(255,215,0,0.1)', color: '#ffd700', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '34px'
                       }}
                     >
-                      +1 Year Gold
+                      {actionLoading?.userId === u.id && actionLoading?.action === 'vip_gold' ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        '+1 Year Gold'
+                      )}
                     </button>
                     <button
                       onClick={() => setTier(u.id, 'free', 0)}
+                      disabled={!!actionLoading}
                       style={{
                         padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(255,68,68,0.3)',
-                        background: 'rgba(255,68,68,0.1)', color: '#ff4444', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'
+                        background: 'rgba(255,68,68,0.1)', color: '#ff4444', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '34px'
                       }}
                     >
-                      Revoke
+                      {actionLoading?.userId === u.id && actionLoading?.action === 'free' ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        'Revoke'
+                      )}
                     </button>
                   </div>
                 </div>
@@ -265,6 +268,7 @@ export default function VipManagement() {
             })}
           </div>
         )}
+
 
         {activeTab === 'codes' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
