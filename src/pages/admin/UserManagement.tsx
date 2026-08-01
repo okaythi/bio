@@ -139,30 +139,37 @@ export default function UserManagement() {
               key="details"
               initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                  <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2.5rem', fontWeight: 800, boxShadow: '0 10px 20px rgba(255,42,95,0.3)' }}>
-                    {userDetails.profile?.display_name ? userDetails.profile.display_name[0].toUpperCase() : 'U'}
+              {(() => {
+                const displayName = userDetails.profile?.display_name || selectedUser?.display_name || (selectedUser?.email ? selectedUser.email.split('@')[0] : null) || userDetails.user?.email?.split('@')[0] || 'User';
+                return (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                      <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2.5rem', fontWeight: 800, boxShadow: '0 10px 20px rgba(255,42,95,0.3)' }}>
+                        {displayName[0].toUpperCase()}
+                      </div>
+                      <div>
+                        <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-1px' }}>{displayName}</h2>
+                        <div style={{ color: '#aaa', marginTop: '0.25rem', fontSize: '1.1rem' }}>{userDetails.user?.email}</div>
+                      </div>
+                    </div>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
+                      <label style={{ fontSize: '0.85rem', color: '#888', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Subscription Tier</label>
+                      <select 
+                        value={userDetails.subscription?.plan_tier || 'free'}
+                        onChange={e => updateField('subscription', 'plan_tier', e.target.value)}
+                        style={{ background: 'transparent', color: '#ff2a5f', border: 'none', fontSize: '1.1rem', fontWeight: 800, outline: 'none', cursor: 'pointer' }}
+                      >
+                        <option value="free" style={{ background: '#111', color: '#fff' }}>Free Tier</option>
+                        <option value="vip_silver" style={{ background: '#111', color: '#ffd700' }}>VIP Silver Pass (Monthly)</option>
+                        <option value="vip_gold" style={{ background: '#111', color: '#ffd700' }}>VIP Gold Founder (Annual)</option>
+                        <option value="vip_platinum" style={{ background: '#111', color: '#ffd700' }}>VIP Platinum Master (Lifetime)</option>
+                        <option value="vip" style={{ background: '#111', color: '#ffd700' }}>VIP Active Member</option>
+                      </select>
+                    </div>
                   </div>
-                  <div>
-                    <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-1px' }}>{userDetails.profile?.display_name || 'Anonymous User'}</h2>
-                    <div style={{ color: '#aaa', marginTop: '0.25rem', fontSize: '1.1rem' }}>{userDetails.user?.email}</div>
-                  </div>
-                </div>
-                <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                  <label style={{ fontSize: '0.85rem', color: '#888', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Plan Tier</label>
-                  <select 
-                    value={userDetails.subscription?.plan_tier || 'free'}
-                    onChange={e => updateField('subscription', 'plan_tier', e.target.value)}
-                    style={{ background: 'transparent', color: '#ff2a5f', border: 'none', fontSize: '1.25rem', fontWeight: 800, outline: 'none', cursor: 'pointer' }}
-                  >
-                    <option value="free">Free</option>
-                    <option value="basic">Basic</option>
-                    <option value="premium">Premium</option>
-                    <option value="vip">VIP</option>
-                  </select>
-                </div>
-              </div>
+                );
+              })()}
+
 
               <div style={{ 
                 background: 'linear-gradient(135deg, rgba(255,42,95,0.05) 0%, rgba(255,68,68,0.1) 100%)', 

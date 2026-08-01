@@ -1,6 +1,6 @@
 import { Outlet, NavLink } from 'react-router-dom';
 import { useAdmin } from '../../context/AdminContext';
-import { ShieldAlert, RefreshCw, LayoutDashboard, Users, Activity, LogOut } from 'lucide-react';
+import { ShieldAlert, RefreshCw, LayoutDashboard, Users, Activity, LogOut, Crown } from 'lucide-react';
 import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 
@@ -80,6 +80,9 @@ export default function AdminLayout() {
           <NavLink to="/d/a" end style={navLinkStyle}>
             <LayoutDashboard size={20} /> Dashboard
           </NavLink>
+          <NavLink to="/d/a/vip" style={navLinkStyle}>
+            <Crown size={20} color="#ffd700" /> VIP Control
+          </NavLink>
           <NavLink to="/d/a/users" style={navLinkStyle}>
             <Users size={20} /> Users
           </NavLink>
@@ -87,6 +90,7 @@ export default function AdminLayout() {
             <Activity size={20} /> Telemetry
           </NavLink>
         </div>
+
 
         <a href="/" style={{ 
           display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1.5rem', 

@@ -6,6 +6,7 @@ import Watch from './pages/Watch';
 import { AdminProvider } from './context/AdminContext';
 import AdminLayout from './pages/admin/AdminLayout';
 import Dashboard from './pages/admin/Dashboard';
+import VipManagement from './pages/admin/VipManagement';
 import UserManagement from './pages/admin/UserManagement';
 import TelemetryReplay from './pages/admin/TelemetryReplay';
 
@@ -28,6 +29,7 @@ export default function App() {
           
           <Route path="/d/a" element={<AdminProvider><AdminLayout /></AdminProvider>}>
             <Route index element={<Dashboard />} />
+            <Route path="vip" element={<VipManagement />} />
             <Route path="users" element={<UserManagement />} />
             <Route path="telemetry" element={<TelemetryReplay />} />
           </Route>
@@ -36,3 +38,4 @@ export default function App() {
     </QueryClientProvider>
   );
 }
+
