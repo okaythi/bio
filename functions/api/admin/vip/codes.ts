@@ -61,6 +61,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   try {
     const body = await context.request.json<any>();
     const prefix = body?.prefix || "VIP";
+    const planTier = body?.planTier || "vip_silver";
     const durationDays = parseInt(body?.durationDays || 30, 10);
     const maxUses = parseInt(body?.maxUses || 1, 10);
 
@@ -68,10 +69,10 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     const code = `${prefix}-${randomPart}`;
 
     await context.env.DB.prepare(
-      "INSERT INTO vip_promo_codes (code, duration_days, max_uses) VALUES (?, ?, ?)"
-    ).bind(code, durationDays, maxUses).run();
+      "INSERT INTO vip_promo_codes (code, plan_tier, duration_days, max_uses) VALUES (?, ?, ?, ?)"
+    ).bind(code, planTier, durationDays, maxUses).run();
 
-    return new Response(JSON.stringify({ success: true, code, durationDays, maxUses }), {
+    return new Response(JSON.stringify({ success: true, code, planTier, durationDays, maxUses }), {
       status: 201,
       headers: { "Content-Type": "application/json", ...corsHeaders }
     });

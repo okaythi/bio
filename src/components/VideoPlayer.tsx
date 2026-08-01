@@ -49,6 +49,7 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
   const [progress, setProgress] = useState(0);
   const [showSkipIntro, setShowSkipIntro] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
+  const [isSessionRevoked, setIsSessionRevoked] = useState(false);
 
   const [currentSeason, setCurrentSeason] = useState(initialSeason || (metadata.seasons?.[0]?.seasonNumber ?? 1));
   const [currentEpisodeIndex, setCurrentEpisodeIndex] = useState((initialEpisode ? initialEpisode - 1 : 0));
@@ -473,7 +474,17 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
-      }).catch(() => {});
+      })
+      .then(res => {
+         if (res.status === 401 || res.status === 403) {
+            setIsSessionRevoked(true);
+            setIsPlaying(false);
+            if (videoRef.current) {
+               videoRef.current.pause();
+            }
+         }
+      })
+      .catch(() => {});
       
       telemetry.track('video_progress_heartbeat', payload);
     };
@@ -629,12 +640,35 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
         </div>
       )}
 
-      {videoError && (
+      {videoError && !isSessionRevoked && (
         <div className="video-error-overlay">
           <div className="video-error-content">
             <span className="video-error-icon">⚠</span>
             <p className="video-error-message">{videoError}</p>
             <button className="play-button" onClick={() => navigate(-1)}>← Go Back</button>
+          </div>
+        </div>
+      )}
+
+      {isSessionRevoked && (
+        <div style={{
+          position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+          background: 'rgba(0,0,0,0.85)', padding: '1.5rem 2rem', borderRadius: '12px',
+          border: '1px solid rgba(255,42,95,0.4)', zIndex: 1000,
+          color: '#fff', fontSize: '1.2rem', fontWeight: 600, textAlign: 'center',
+          boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+        }}>
+          You have been logged out.
+          <div style={{ marginTop: '1rem' }}>
+            <button 
+              onClick={() => { window.location.href = '/'; }}
+              style={{
+                background: '#ff2a5f', border: 'none', color: '#fff', padding: '0.5rem 1.5rem',
+                borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '1rem'
+              }}
+            >
+              Go to Home
+            </button>
           </div>
         </div>
       )}

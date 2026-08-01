@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Crown, Key, ListOrdered, Sparkles, RefreshCw, UserCheck, ThumbsUp, Loader2 } from 'lucide-react';
+import { getTierColor, getTierLabel } from '../../context/AuthContext';
 
 export default function VipManagement() {
   const [activeTab, setActiveTab] = useState<'members' | 'codes' | 'requests'>('members');
@@ -11,9 +12,11 @@ export default function VipManagement() {
 
   // Pass code generator form
   const [prefix, setPrefix] = useState('VIP');
+  const [planTier, setPlanTier] = useState('vip_silver');
   const [durationDays, setDurationDays] = useState('30');
   const [maxUses, setMaxUses] = useState('1');
   const [genSuccess, setGenSuccess] = useState<string | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
   const [genLoading, setGenLoading] = useState(false);
 
   useEffect(() => {
@@ -61,19 +64,35 @@ export default function VipManagement() {
     e.preventDefault();
     setGenLoading(true);
     setGenSuccess(null);
+    setGenError(null);
+
+    const dDays = parseInt(durationDays, 10);
+    const mUses = parseInt(maxUses, 10);
+
+    if (isNaN(dDays) || dDays < 1 || dDays > 365) {
+      setGenError('BIO-704: Duration must be between 1 and 365 days');
+      setGenLoading(false);
+      return;
+    }
+    if (isNaN(mUses) || mUses < 1) {
+      setGenError('BIO-704: Max redemptions must be greater than 0');
+      setGenLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/admin/vip/codes', {
         method: 'POST',
         headers: getAuthHeaders(),
         credentials: 'include',
-        body: JSON.stringify({ prefix, durationDays, maxUses })
+        body: JSON.stringify({ prefix, planTier, durationDays: dDays.toString(), maxUses: mUses.toString() })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to generate code');
       setGenSuccess(`Generated code: ${data.code} (${data.durationDays} days)`);
       fetchData();
     } catch (err: any) {
-      setGenSuccess(`Error: ${err.message}`);
+      setGenError(`BIO-702: ${err.message}`);
     } finally {
       setGenLoading(false);
     }
@@ -203,10 +222,10 @@ export default function VipManagement() {
                     </div>
                     {isUserVip ? (
                       <span style={{
-                        background: 'rgba(255, 215, 0, 0.15)', color: '#ffd700', border: '1px solid rgba(255, 215, 0, 0.4)',
+                        background: `${getTierColor(u.plan_tier || 'vip')}22`, color: getTierColor(u.plan_tier || 'vip'), border: `1px solid ${getTierColor(u.plan_tier || 'vip')}66`,
                         padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px'
                       }}>
-                        <Crown size={12} /> VIP ACTIVE
+                        <Crown size={12} /> {getTierLabel(u.plan_tier || 'vip')} ACTIVE
                       </span>
                     ) : (
                       <span style={{ background: 'rgba(255,255,255,0.05)', color: '#888', padding: '4px 10px', borderRadius: '12px', fontSize: '0.75rem' }}>
@@ -288,6 +307,17 @@ export default function VipManagement() {
                   />
                 </div>
                 <div>
+                  <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.5rem' }}>Tier</label>
+                  <select
+                    value={planTier} onChange={e => setPlanTier(e.target.value)}
+                    style={{ width: '100%', padding: '0.75rem', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                  >
+                    <option value="vip_silver">Silver</option>
+                    <option value="vip_gold">Gold</option>
+                    <option value="vip_platinum">Platinum</option>
+                  </select>
+                </div>
+                <div>
                   <label style={{ fontSize: '0.8rem', color: '#888', display: 'block', marginBottom: '0.5rem' }}>Duration (Days)</label>
                   <input
                     type="number" value={durationDays} onChange={e => setDurationDays(e.target.value)}
@@ -312,6 +342,7 @@ export default function VipManagement() {
                 {genLoading ? 'Generating...' : 'Generate VIP Pass Key'}
               </button>
               {genSuccess && <div style={{ padding: '0.75rem', background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.3)', color: '#4ade80', borderRadius: '8px', fontWeight: 600 }}>{genSuccess}</div>}
+              {genError && <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', borderRadius: '8px', fontWeight: 600 }}>{genError}</div>}
             </form>
 
             {(() => {
@@ -327,11 +358,11 @@ export default function VipManagement() {
                     </h3>
                     {activePassKeys.map(c => (
                       <div key={c.code} style={{
-                        background: 'rgba(255, 215, 0, 0.03)', border: '1px solid rgba(255, 215, 0, 0.2)',
+                        background: `${getTierColor(c.plan_tier)}10`, border: `1px solid ${getTierColor(c.plan_tier)}33`,
                         padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                       }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: '#ffd700', letterSpacing: '1px' }}>{c.code}</div>
+                          <div style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: getTierColor(c.plan_tier), letterSpacing: '1px' }}>{c.code}</div>
                           <span style={{
                             background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.3)',
                             padding: '2px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800
@@ -340,12 +371,18 @@ export default function VipManagement() {
                           </span>
                         </div>
                         <div style={{ display: 'flex', gap: '1.5rem', color: '#aaa', fontSize: '0.9rem', alignItems: 'center' }}>
+                          <span style={{ color: getTierColor(c.plan_tier) }}>{getTierLabel(c.plan_tier)}</span>
                           <span>{c.duration_days} Days VIP</span>
                           <span style={{ color: '#fff', fontWeight: 700 }}>Uses: {c.current_uses} / {c.max_uses}</span>
                         </div>
                       </div>
                     ))}
-                    {activePassKeys.length === 0 && <div style={{ color: '#666', fontStyle: 'italic', padding: '1rem 0' }}>No active pass keys available.</div>}
+                    {activePassKeys.length === 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontStyle: 'italic', padding: '3rem 0', background: 'rgba(0,0,0,0.2)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                        <Key size={32} style={{ marginBottom: '1rem', opacity: 0.5 }} />
+                        <div>No active pass keys available. Generate one above.</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Depleted Pass Keys Section */}
@@ -370,6 +407,7 @@ export default function VipManagement() {
                             </span>
                           </div>
                           <div style={{ display: 'flex', gap: '1.5rem', color: '#666', fontSize: '0.85rem', alignItems: 'center' }}>
+                            <span>{getTierLabel(c.plan_tier)}</span>
                             <span>{c.duration_days} Days VIP</span>
                             <span>Uses: {c.current_uses} / {c.max_uses}</span>
                           </div>
@@ -413,7 +451,12 @@ export default function VipManagement() {
                 </div>
               </div>
             ))}
-            {requests.length === 0 && <div style={{ color: '#666', fontStyle: 'italic', textAlign: 'center', padding: '3rem' }}>No title requests submitted yet.</div>}
+            {requests.length === 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#666', fontStyle: 'italic', padding: '4rem 0', background: 'rgba(0,0,0,0.2)', borderRadius: '16px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                <ListOrdered size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                <div style={{ fontSize: '1.1rem' }}>No priority title requests submitted yet.</div>
+              </div>
+            )}
           </div>
         )}
       </div>

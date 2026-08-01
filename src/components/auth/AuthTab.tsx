@@ -27,7 +27,7 @@ export default function AuthTab({
   email, setEmail, password, setPassword, displayName, setDisplayName,
   loading, handleAuthSubmit, setError, logout, LogOutIcon
 }: AuthTabProps) {
-  const { isVip, planTierLabel, redeemVipCode } = useAuth();
+  const { isVip, planTierLabel, planTierColor, redeemVipCode } = useAuth();
   const [vipCode, setVipCode] = useState('');
   const [redeemLoading, setRedeemLoading] = useState(false);
   const [redeemMsg, setRedeemMsg] = useState<string | null>(null);
@@ -52,14 +52,26 @@ export default function AuthTab({
   if (user) {
     return (
       <div className="auth-form">
-        <div className="auth-flex-row">
-          <div className="auth-profile-card">
-            <div className="auth-profile-label">Username</div>
-            <div className="auth-profile-value username">{username}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', marginBottom: '1rem' }}>
+          <div style={{
+            width: 70, height: 70, borderRadius: '50%', backgroundColor: 'var(--bg-color)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '1.8rem', fontWeight: 800, color: 'var(--foreground)',
+            border: isVip ? `2px solid ${planTierColor}` : '1px solid rgba(255,255,255,0.2)',
+            boxShadow: isVip ? `0 0 15px ${planTierColor}66` : 'none',
+            overflow: 'hidden', flexShrink: 0
+          }}>
+            {user.profile?.avatar_url ? (
+              <img src={user.profile.avatar_url} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              user.profile?.display_name?.[0]?.toUpperCase() || user.email[0].toUpperCase()
+            )}
           </div>
-          <div className="auth-profile-card">
-            <div className="auth-profile-label">Email Address</div>
-            <div className="auth-profile-value email">{user.email}</div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 700 }}>
+              {user.profile?.display_name || username || 'Anonymous User'}
+            </h2>
+            <p style={{ margin: '0.25rem 0', color: 'rgba(255,255,255,0.6)', fontSize: '0.85rem' }}>{user.email}</p>
           </div>
         </div>
 
@@ -69,13 +81,13 @@ export default function AuthTab({
             <div className="auth-profile-value role" style={{ textTransform: 'capitalize' }}>{user.role}</div>
           </div>
           <div className="auth-profile-card" style={{
-            background: isVip ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.12) 0%, rgba(255, 140, 0, 0.12) 100%)' : undefined,
-            borderColor: isVip ? 'rgba(255, 215, 0, 0.4)' : undefined
+            background: isVip ? `linear-gradient(135deg, ${planTierColor}20 0%, rgba(0,0,0,0) 100%)` : undefined,
+            borderColor: isVip ? planTierColor : undefined
           }}>
-            <div className="auth-profile-label" style={{ color: isVip ? '#ffd700' : undefined, display: 'flex', alignItems: 'center', gap: '4px' }}>
-              {isVip && <Crown size={14} color="#ffd700" />} Subscription Tier
+            <div className="auth-profile-label" style={{ color: isVip ? planTierColor : undefined, display: 'flex', alignItems: 'center', gap: '4px' }}>
+              {isVip && <Crown size={14} color={planTierColor} />} Subscription Tier
             </div>
-            <div className="auth-profile-value plan" style={{ color: isVip ? '#ffd700' : undefined, fontWeight: 700 }}>
+            <div className="auth-profile-value plan" style={{ color: isVip ? planTierColor : undefined, fontWeight: 700 }}>
               {planTierLabel}
             </div>
           </div>

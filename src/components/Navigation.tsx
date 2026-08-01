@@ -31,33 +31,38 @@ const StaffRedBadge = () => (
   </div>
 );
 
-const VipGoldBadge = () => (
-  <div 
-    title="VIP Member" 
-    style={{
-      display: 'flex',
-      alignItems: 'center',
-      gap: '5px',
-      backgroundColor: 'rgba(255, 215, 0, 0.15)',
-      border: '1px solid rgba(255, 215, 0, 0.6)',
-      borderRadius: '12px',
-      padding: '3px 10px',
-      fontSize: '0.75rem',
-      color: '#ffd700',
-      fontWeight: 700,
-      boxShadow: '0 0 12px rgba(255, 215, 0, 0.35)',
-      userSelect: 'none'
-    }}
-  >
-    <Crown size={13} color="#ffd700" />
-    <span>VIP</span>
-  </div>
-);
+const VipBadge = ({ color, label }: { color: string; label: string }) => {
+  // Extract just the tier name without the expiration part for the badge
+  const shortLabel = label.split(' ')[0];
+  
+  return (
+    <div 
+      title="VIP Member" 
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '5px',
+        backgroundColor: `${color}25`, // 15% opacity hex roughly
+        border: `1px solid ${color}99`, // 60% opacity
+        borderRadius: '12px',
+        padding: '3px 10px',
+        fontSize: '0.75rem',
+        color: color,
+        fontWeight: 700,
+        boxShadow: `0 0 12px ${color}55`, // 35% opacity
+        userSelect: 'none'
+      }}
+    >
+      <Crown size={13} color={color} />
+      <span>{shortLabel}</span>
+    </div>
+  );
+};
 
 export default function Navigation({ searchQuery, onSearchChange }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, experiments, isStaff, isVip } = useAuth();
+  const { user, experiments, isStaff, isVip, planTierLabel, planTierColor } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -123,7 +128,7 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             </div>
           )}
 
-          {isVip && <VipGoldBadge />}
+          {isVip && <VipBadge color={planTierColor} label={planTierLabel} />}
 
           {user && !isVip && (
             <button
@@ -158,18 +163,18 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
                 alt="Profile Avatar" 
                 style={{
                   width: 32, height: 32, borderRadius: '6px', objectFit: 'cover',
-                  border: isVip ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.2)',
-                  boxShadow: isVip ? '0 0 12px rgba(255, 215, 0, 0.7)' : 'none'
+                  border: isVip ? `2px solid ${planTierColor}` : '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: isVip ? `0 0 12px ${planTierColor}88` : 'none'
                 }} 
               />
             ) : (
               <div style={{
                 width: 32, height: 32, borderRadius: '6px',
                 backgroundColor: isVip ? '#1a1805' : (user ? '#E50914' : 'var(--card-bg)'),
-                border: isVip ? '2px solid #ffd700' : 'none',
-                boxShadow: isVip ? '0 0 12px rgba(255, 215, 0, 0.7)' : 'none',
+                border: isVip ? `2px solid ${planTierColor}` : 'none',
+                boxShadow: isVip ? `0 0 12px ${planTierColor}88` : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: isVip ? '#ffd700' : (user ? '#fff' : 'var(--foreground)'),
+                color: isVip ? planTierColor : (user ? '#fff' : 'var(--foreground)'),
                 fontWeight: 700, fontSize: '0.85rem'
               }}>
                 {user ? (user.profile?.display_name?.[0] || user.email[0]).toUpperCase() : <UserIcon size={18} />}

@@ -144,6 +144,7 @@ CREATE TABLE IF NOT EXISTS user_behavioral_profiles (
 -- VIP System Tables & Promo Codes
 CREATE TABLE IF NOT EXISTS vip_promo_codes (
   code TEXT PRIMARY KEY,
+  plan_tier TEXT DEFAULT 'vip_silver',
   duration_days INTEGER NOT NULL DEFAULT 30,
   max_uses INTEGER DEFAULT 1,
   current_uses INTEGER DEFAULT 0,

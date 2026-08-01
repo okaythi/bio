@@ -7,7 +7,11 @@ export default function Dashboard() {
   const [settings, setSettings] = useState({ vpnCheckEnabled: true, allowlistIps: [] as string[], defaultHero: '', promotedWeights: {} as Record<string, number>, comingSoonList: [] as any[] });
   const [newIp, setNewIp] = useState('');
   const [saving, setSaving] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+  const [ipError, setIpError] = useState('');
   const [movies, setMovies] = useState<{id: string, title: string}[]>([]);
+  const [stats, setStats] = useState({ totalAutoPlays: 0, highestChurn: 'N/A', highestChurnRate: '0%', completionRate: '0%', trend: '', trendCompletion: '' });
+  const [statsError, setStatsError] = useState('');
 
   const [tmdbQuery, setTmdbQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TMDBSearchResult[]>([]);
@@ -18,11 +22,18 @@ export default function Dashboard() {
     fetch('/api/admin/settings')
       .then(r => r.json())
       .then(d => setSettings({ vpnCheckEnabled: true, allowlistIps: [], defaultHero: '', promotedWeights: {}, comingSoonList: [], ...d }))
-      .catch(console.error);
+      .catch(() => setSettingsError('BIO-701: Failed to load admin settings'));
     fetch('/api/movies')
       .then(r => r.json())
       .then(d => setMovies(d))
       .catch(console.error);
+    fetch('/api/admin/telemetry/stats')
+      .then(r => r.json())
+      .then(d => {
+        if (d.error) throw new Error(d.error);
+        setStats(d);
+      })
+      .catch((e) => setStatsError(e.message || 'BIO-700: Failed to fetch admin telemetry stats'));
   }, []);
 
   useEffect(() => {
@@ -31,23 +42,30 @@ export default function Dashboard() {
       setShowDropdown(false);
       return;
     }
+    let active = true;
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
         const results = await searchMulti(tmdbQuery);
-        setSearchResults(results);
-        setShowDropdown(true);
+        if (active) {
+          setSearchResults(results);
+          setShowDropdown(true);
+        }
       } catch (err) {
         console.error(err);
       } finally {
-        setIsSearching(false);
+        if (active) setIsSearching(false);
       }
     }, 300);
-    return () => clearTimeout(timer);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, [tmdbQuery]);
 
   const saveSettings = async (updated: typeof settings) => {
     setSaving(true);
+    setSettingsError('');
     try {
       const res = await fetch('/api/admin/settings', {
         method: 'PUT',
@@ -55,7 +73,13 @@ export default function Dashboard() {
         body: JSON.stringify(updated)
       });
       const data = await res.json();
-      if (res.ok) setSettings(data);
+      if (res.ok) {
+        setSettings(data);
+      } else {
+        setSettingsError(data.error || 'BIO-701: Failed to save global admin settings');
+      }
+    } catch (err: any) {
+      setSettingsError(`BIO-701: Failed to save global admin settings - ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -63,6 +87,12 @@ export default function Dashboard() {
 
   const addIp = () => {
     if (!newIp) return;
+    setIpError('');
+    const ipRegex = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$|^(?:[A-Fa-f0-9]{1,4}:){7}[A-Fa-f0-9]{1,4}$/;
+    if (!ipRegex.test(newIp)) {
+      setIpError('BIO-704: Invalid IP address format');
+      return;
+    }
     const updated = { ...settings, allowlistIps: [...settings.allowlistIps, newIp] };
     saveSettings(updated);
     setNewIp('');
@@ -101,7 +131,7 @@ export default function Dashboard() {
     };
 
     const currentList = settings.comingSoonList || [];
-    if (currentList.some((i: any) => i.tmdbId === item.id || i.title.toLowerCase() === title.toLowerCase())) {
+    if (currentList.some((i: any) => (i.tmdbId && item.id && i.tmdbId === item.id) || (i.title && title && i.title.toLowerCase() === title.toLowerCase()))) {
       return;
     }
 
@@ -123,6 +153,12 @@ export default function Dashboard() {
         <ShieldCheck size={36} color="#ff2a5f" />
         <h2 style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, letterSpacing: '-1px' }}>Global Settings</h2>
       </div>
+
+      {settingsError && (
+        <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', borderRadius: '12px', marginBottom: '2rem', fontWeight: 600 }}>
+          {settingsError}
+        </div>
+      )}
 
       <div style={cardStyle}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem', color: '#ff2a5f' }}>
@@ -311,28 +347,31 @@ export default function Dashboard() {
             Restrict OmniControl access to specific static IP addresses. If populated, only these IPs bypass the firewall.
           </p>
           
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-            <input 
-              type="text" 
-              placeholder="e.g. 192.168.1.1" 
-              value={newIp} 
-              onChange={e => setNewIp(e.target.value)}
-              style={{ 
-                flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', 
-                background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '1rem', outline: 'none' 
-              }}
-            />
-            <button 
-              onClick={addIp}
-              disabled={saving || !newIp}
-              style={{ 
-                padding: '0 1.5rem', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', 
-                color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
-                fontWeight: 600, opacity: (!newIp || saving) ? 0.5 : 1
-              }}
-            >
-              <Plus size={20} /> Add
-            </button>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem' }}>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <input 
+                type="text" 
+                placeholder="e.g. 192.168.1.1" 
+                value={newIp} 
+                onChange={e => { setNewIp(e.target.value); setIpError(''); }}
+                style={{ 
+                  flex: 1, padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', 
+                  background: 'rgba(0,0,0,0.3)', color: '#fff', fontSize: '1rem', outline: 'none' 
+                }}
+              />
+              <button 
+                onClick={addIp}
+                disabled={saving || !newIp}
+                style={{ 
+                  padding: '0 1.5rem', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', 
+                  color: '#fff', border: 'none', borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+                  fontWeight: 600, opacity: (!newIp || saving) ? 0.5 : 1
+                }}
+              >
+                <Plus size={20} /> Add
+              </button>
+            </div>
+            {ipError && <div style={{ color: '#ef4444', fontSize: '0.9rem', fontWeight: 600 }}>{ipError}</div>}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
@@ -434,20 +473,32 @@ export default function Dashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem' }}>
             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Total Auto-Plays (Next Ep)</div>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>1,248</div>
-              <div style={{ color: '#4ade80', fontSize: '0.85rem', marginTop: '0.5rem' }}>+12% this week</div>
+              {statsError ? <div style={{ color: '#ef4444', fontSize: '0.9rem' }}>{statsError}</div> : (
+                <>
+                  <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>{stats.totalAutoPlays.toLocaleString()}</div>
+                  <div style={{ color: '#4ade80', fontSize: '0.85rem', marginTop: '0.5rem' }}>{stats.trend || '+0% this week'}</div>
+                </>
+              )}
             </div>
             
             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Highest Churn Point</div>
-              <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#fff' }}>S01E04</div>
-              <div style={{ color: '#ff4444', fontSize: '0.85rem', marginTop: '0.5rem' }}>38% drop-off rate</div>
+              {statsError ? <div style={{ color: '#ef4444', fontSize: '0.9rem' }}>{statsError}</div> : (
+                <>
+                  <div style={{ fontSize: '1.5rem', fontWeight: 600, color: '#fff' }}>{stats.highestChurn}</div>
+                  <div style={{ color: '#ff4444', fontSize: '0.85rem', marginTop: '0.5rem' }}>{stats.highestChurnRate}</div>
+                </>
+              )}
             </div>
 
             <div style={{ background: 'rgba(0,0,0,0.3)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <div style={{ color: '#888', fontSize: '0.9rem', marginBottom: '0.5rem' }}>Season Completion Rate</div>
-              <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>62%</div>
-              <div style={{ color: '#4ade80', fontSize: '0.85rem', marginTop: '0.5rem' }}>Average across all shows</div>
+              {statsError ? <div style={{ color: '#ef4444', fontSize: '0.9rem' }}>{statsError}</div> : (
+                <>
+                  <div style={{ fontSize: '2rem', fontWeight: 700, color: '#fff' }}>{stats.completionRate}</div>
+                  <div style={{ color: '#4ade80', fontSize: '0.85rem', marginTop: '0.5rem' }}>{stats.trendCompletion || 'Average across all shows'}</div>
+                </>
+              )}
             </div>
           </div>
         </div>

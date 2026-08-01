@@ -46,6 +46,7 @@ interface AuthContextType {
   isVip: boolean;
   vipExpiresAt: string | null;
   planTierLabel: string;
+  planTierColor: string;
   login: (email: string, pass: string, turnstile?: string) => Promise<void>;
   register: (email: string, pass: string, displayName?: string, turnstile?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -58,6 +59,22 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
+
+export const getTierColor = (tier: string | undefined): string => {
+  if (tier === 'vip_platinum') return '#e5e4e2';
+  if (tier === 'vip_gold') return '#ffd700';
+  if (tier === 'vip_silver') return '#c0c0c0';
+  if (tier === 'vip') return '#ffd700'; // Legacy fallback
+  return '#ffffff';
+};
+
+export const getTierLabel = (tier: string | undefined): string => {
+  if (tier === 'vip_platinum') return 'PLATINUM';
+  if (tier === 'vip_gold') return 'GOLD';
+  if (tier === 'vip_silver') return 'SILVER';
+  if (tier === 'vip') return 'VIP'; // Legacy fallback
+  return 'FREE';
+};
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -73,26 +90,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isVip = Boolean(
     user && (
-      (user.subscription?.plan_tier === 'vip' && user.subscription?.status === 'active') ||
+      (user.subscription?.plan_tier?.startsWith('vip') && user.subscription?.status === 'active') ||
       user.subscription?.is_vip ||
       flags.includes('vip')
     )
   );
 
   const vipExpiresAt = user?.subscription?.expires_at || null;
+  const currentTier = user?.subscription?.plan_tier;
 
-  let planTierLabel = 'FREE';
-  if (isVip) {
-    planTierLabel = 'VIP';
-    if (vipExpiresAt) {
-      const expDate = new Date(vipExpiresAt);
-      planTierLabel += ` (Expires ${expDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })})`;
-    } else {
-      planTierLabel += ` (Lifetime Pass)`;
-    }
+  let planTierLabel = getTierLabel(currentTier);
+  const planTierColor = getTierColor(currentTier);
+  if (isVip && vipExpiresAt) {
+    const expDate = new Date(vipExpiresAt);
+    planTierLabel += ` (Expires ${expDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })})`;
+  } else if (isVip) {
+    planTierLabel += ` (Lifetime Pass)`;
   }
-
-
 
   useEffect(() => {
     document.body.classList.add('new-ui');
@@ -292,6 +306,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isVip,
       vipExpiresAt,
       planTierLabel,
+      planTierColor,
       login,
       register,
       logout,

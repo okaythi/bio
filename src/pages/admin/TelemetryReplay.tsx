@@ -36,24 +36,31 @@ export default function TelemetryReplay() {
     
     ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
     
+    // Explicitly cleanup any previous playback on mode or trace change
+    if (playFrameRef.current) {
+      cancelAnimationFrame(playFrameRef.current);
+      playFrameRef.current = 0;
+    }
+    setIsPlaying(false);
+    currentT.current = 0;
+    
     const splines = selectedTrace.data.splines || [];
     if (splines.length === 0) return;
 
     if (mode === 'heatmap') {
-      setIsPlaying(false);
       ctx.fillStyle = 'rgba(255, 42, 95, 0.1)';
       for (const pt of splines) {
         ctx.beginPath();
         ctx.arc(pt.x, pt.y, 25, 0, Math.PI * 2);
         ctx.fill();
       }
-    } else {
-      currentT.current = 0;
-      drawVideoFrame();
     }
 
     return () => {
-      if (playFrameRef.current) cancelAnimationFrame(playFrameRef.current);
+      if (playFrameRef.current) {
+        cancelAnimationFrame(playFrameRef.current);
+        playFrameRef.current = 0;
+      }
     };
   }, [selectedTrace, mode]);
 

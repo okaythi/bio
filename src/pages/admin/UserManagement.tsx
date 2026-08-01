@@ -8,6 +8,13 @@ export default function UserManagement() {
   const [userDetails, setUserDetails] = useState<any | null>(null);
   const [aiSummary, setAiSummary] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
+  const [tierUpdating, setTierUpdating] = useState(false);
+  const [userError, setUserError] = useState('');
+  
+  const [editSubTier, setEditSubTier] = useState('free');
+  const [editSubDays, setEditSubDays] = useState('30');
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -34,51 +41,82 @@ export default function UserManagement() {
       .then(d => setAiSummary(d.summary || 'Failed to generate summary.'))
       .catch(() => setAiSummary('Error fetching AI summary.'));
       
+      setEditSubTier(data.subscription?.plan_tier || 'free');
+      if (data.subscription?.expires_at) {
+         const diff = new Date(data.subscription.expires_at).getTime() - Date.now();
+         const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+         setEditSubDays(days > 0 ? days.toString() : '30');
+      } else {
+         setEditSubDays('30');
+      }
+      
     } finally {
       setLoading(false);
     }
   };
 
-  const updateField = async (section: string, field: string, value: any) => {
+  const applySubscription = async () => {
     if (!userDetails || !selectedUser) return;
-    const current = { ...userDetails };
-    if (!current[section]) current[section] = {};
-    current[section][field] = value;
+    setUserError('');
+    setTierUpdating(true);
+    try {
+      const payload: any = { subscription: { plan_tier: editSubTier, status: 'active', expires_at: null } };
+      if (editSubTier === 'free') {
+        payload.subscription.status = 'canceled';
+      } else {
+        const days = parseInt(editSubDays, 10) || 30;
+        payload.subscription.expires_at = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
+      }
 
-    const payload: any = { [section]: { [field]: value } };
-    if (section === 'subscription' && field === 'plan_tier' && value === 'vip') {
-      const expDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
-      payload.subscription.status = 'active';
-      payload.subscription.expires_at = expDate;
-      current.subscription.status = 'active';
-      current.subscription.expires_at = expDate;
-    }
-
-    setUserDetails(current);
-
-    await fetch(`/api/admin/users/${selectedUser.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const res = await fetch(`/api/admin/users/${selectedUser.id}`);
-    if (res.ok) {
-      const data = await res.json();
-      setUserDetails(data);
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to update subscription');
+      }
+      const freshRes = await fetch(`/api/admin/users/${selectedUser.id}`);
+      if (freshRes.ok) {
+        setUserDetails(await freshRes.json());
+      }
+    } catch (err: any) {
+      setUserError(`BIO-703: Failed to update subscription - ${err.message}`);
+    } finally {
+      setTierUpdating(false);
     }
   };
+
+
 
 
   const revokeSession = async (sessionId: string) => {
     if (!selectedUser) return;
-    await fetch(`/api/admin/users/${selectedUser.id}?sessionId=${sessionId}`, {
-      method: 'DELETE'
-    });
-    const res = await fetch(`/api/admin/users/${selectedUser.id}`);
-    const data = await res.json();
-    setUserDetails(data);
+    setRevokingSessionId(sessionId);
+    setUserError('');
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}?sessionId=${sessionId}`, {
+        method: 'DELETE'
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        throw new Error(d.error || 'Failed to revoke session');
+      }
+      const freshRes = await fetch(`/api/admin/users/${selectedUser.id}`);
+      const data = await freshRes.json();
+      setUserDetails(data);
+    } catch (err: any) {
+      setUserError(`BIO-703: Failed to update session - ${err.message}`);
+    } finally {
+      setRevokingSessionId(null);
+    }
   };
+
+  const filteredUsers = users.filter(u => 
+    (u.display_name && u.display_name.toLowerCase().includes(userSearch.toLowerCase())) || 
+    (u.email && u.email.toLowerCase().includes(userSearch.toLowerCase()))
+  );
 
   return (
     <div style={{ display: 'flex', gap: '2rem', height: '100%' }}>
@@ -88,12 +126,19 @@ export default function UserManagement() {
         boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
       }}>
         <div style={{ padding: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.05)', position: 'sticky', top: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(10px)', zIndex: 10 }}>
-          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <h2 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 600, color: '#fff', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
             <Users size={20} color="#ff2a5f" /> User Directory
           </h2>
+          <input 
+            type="text" 
+            placeholder="Search users..." 
+            value={userSearch}
+            onChange={(e) => setUserSearch(e.target.value)}
+            style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color: '#fff', outline: 'none' }}
+          />
         </div>
         <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {users.map(u => (
+          {filteredUsers.map(u => (
             <motion.div 
               whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
               key={u.id}
@@ -142,7 +187,13 @@ export default function UserManagement() {
               {(() => {
                 const displayName = userDetails.profile?.display_name || selectedUser?.display_name || (selectedUser?.email ? selectedUser.email.split('@')[0] : null) || userDetails.user?.email?.split('@')[0] || 'User';
                 return (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '3rem' }}>
+                    {userError && (
+                      <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444', borderRadius: '12px', fontWeight: 600 }}>
+                        {userError}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                       <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2.5rem', fontWeight: 800, boxShadow: '0 10px 20px rgba(255,42,95,0.3)' }}>
                         {displayName[0].toUpperCase()}
@@ -152,20 +203,51 @@ export default function UserManagement() {
                         <div style={{ color: '#aaa', marginTop: '0.25rem', fontSize: '1.1rem' }}>{userDetails.user?.email}</div>
                       </div>
                     </div>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      <label style={{ fontSize: '0.85rem', color: '#888', display: 'block', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Subscription Tier</label>
-                      <select 
-                        value={userDetails.subscription?.plan_tier || 'free'}
-                        onChange={e => updateField('subscription', 'plan_tier', e.target.value)}
-                        style={{ background: 'transparent', color: '#ff2a5f', border: 'none', fontSize: '1.1rem', fontWeight: 800, outline: 'none', cursor: 'pointer' }}
-                      >
-                        <option value="free" style={{ background: '#111', color: '#fff' }}>Free Tier</option>
-                        <option value="vip_silver" style={{ background: '#111', color: '#ffd700' }}>VIP Silver Pass (Monthly)</option>
-                        <option value="vip_gold" style={{ background: '#111', color: '#ffd700' }}>VIP Gold Founder (Annual)</option>
-                        <option value="vip_platinum" style={{ background: '#111', color: '#ffd700' }}>VIP Platinum Master (Lifetime)</option>
-                        <option value="vip" style={{ background: '#111', color: '#ffd700' }}>VIP Active Member</option>
-                      </select>
+                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <label style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Subscription Tier</label>
+                        <select 
+                          value={editSubTier}
+                          onChange={e => setEditSubTier(e.target.value)}
+                          disabled={tierUpdating}
+                          style={{ background: 'transparent', color: '#ff2a5f', border: '1px solid rgba(255,42,95,0.3)', borderRadius: '6px', padding: '0.25rem 0.5rem', fontSize: '1.05rem', fontWeight: 700, outline: 'none', cursor: 'pointer', opacity: tierUpdating ? 0.5 : 1 }}
+                        >
+                          <option value="free" style={{ background: '#111', color: '#fff' }}>Free Tier</option>
+                          <option value="vip_silver" style={{ background: '#111', color: '#c0c0c0' }}>VIP Silver</option>
+                          <option value="vip_gold" style={{ background: '#111', color: '#ffd700' }}>VIP Gold</option>
+                          <option value="vip_platinum" style={{ background: '#111', color: '#e5e4e2' }}>VIP Platinum</option>
+                        </select>
+                      </div>
+                      
+                      {editSubTier !== 'free' && (
+                        <div style={{ display: 'flex', flexDirection: 'column' }}>
+                          <label style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Duration (Days)</label>
+                          <input 
+                            type="number"
+                            min="1"
+                            value={editSubDays}
+                            onChange={e => setEditSubDays(e.target.value)}
+                            disabled={tierUpdating}
+                            style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '0.25rem 0.5rem', fontSize: '1.05rem', width: '80px', outline: 'none', opacity: tierUpdating ? 0.5 : 1 }}
+                          />
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', paddingBottom: '2px' }}>
+                        <button
+                          onClick={applySubscription}
+                          disabled={tierUpdating}
+                          style={{
+                            background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.4)', color: '#4ade80',
+                            padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
+                            display: 'flex', alignItems: 'center', gap: '0.5rem'
+                          }}
+                        >
+                          {tierUpdating ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
+                        </button>
+                      </div>
                     </div>
+                  </div>
                   </div>
                 );
               })()}
@@ -203,11 +285,12 @@ export default function UserManagement() {
                       </div>
                       <button 
                         onClick={() => revokeSession(s.id)} 
-                        style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)', color: '#ff4444', cursor: 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'all 0.2s' }}
-                        onMouseOver={e => e.currentTarget.style.background = 'rgba(255,68,68,0.2)'}
-                        onMouseOut={e => e.currentTarget.style.background = 'rgba(255,68,68,0.1)'}
+                        disabled={revokingSessionId === s.id}
+                        style={{ background: 'rgba(255,68,68,0.1)', border: '1px solid rgba(255,68,68,0.3)', color: '#ff4444', cursor: revokingSessionId === s.id ? 'default' : 'pointer', padding: '0.5rem', borderRadius: '8px', transition: 'all 0.2s', opacity: revokingSessionId === s.id ? 0.5 : 1 }}
+                        onMouseOver={e => { if (revokingSessionId !== s.id) e.currentTarget.style.background = 'rgba(255,68,68,0.2)' }}
+                        onMouseOut={e => { if (revokingSessionId !== s.id) e.currentTarget.style.background = 'rgba(255,68,68,0.1)' }}
                       >
-                        <Trash2 size={20} />
+                        {revokingSessionId === s.id ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
                       </button>
                     </motion.div>
                   ))}

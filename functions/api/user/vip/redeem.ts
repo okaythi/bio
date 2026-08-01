@@ -42,7 +42,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const promo = await context.env.DB.prepare(
       "SELECT * FROM vip_promo_codes WHERE UPPER(code) = ?"
-    ).bind(cleanCode).first<{ code: string; duration_days: number; max_uses: number; current_uses: number; expires_at?: string }>();
+    ).bind(cleanCode).first<{ code: string; plan_tier: string; duration_days: number; max_uses: number; current_uses: number; expires_at?: string }>();
 
     if (!promo) {
       return new Response(JSON.stringify({ error: "Invalid VIP pass key." }), {
@@ -79,6 +79,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     // Calculate new expiration date
     const durationDays = promo.duration_days || 30;
+    const planTier = promo.plan_tier || 'vip_silver';
     const currentSub = await context.env.DB.prepare(
       "SELECT expires_at, plan_tier FROM user_subscriptions WHERE user_id = ?"
     ).bind(user.id).first<{ expires_at?: string; plan_tier?: string }>();
@@ -93,9 +94,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     // Upsert subscription
     await context.env.DB.prepare(`
       INSERT INTO user_subscriptions (user_id, plan_tier, status, expires_at, updated_at)
-      VALUES (?, 'vip', 'active', ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(user_id) DO UPDATE SET plan_tier = 'vip', status = 'active', expires_at = excluded.expires_at, updated_at = CURRENT_TIMESTAMP
-    `).bind(user.id, newExpiresAt).run();
+      VALUES (?, ?, 'active', ?, CURRENT_TIMESTAMP)
+      ON CONFLICT(user_id) DO UPDATE SET plan_tier = excluded.plan_tier, status = 'active', expires_at = excluded.expires_at, updated_at = CURRENT_TIMESTAMP
+    `).bind(user.id, planTier, newExpiresAt).run();
 
     // Record redemption & increment use count
     const redemptionId = crypto.randomUUID();
