@@ -41,13 +41,15 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   const { results: users } = await context.env.DB.prepare(`
-    SELECT users.id, users.email, user_profiles.display_name
+    SELECT users.id, users.email, user_profiles.display_name,
+           user_subscriptions.plan_tier, user_subscriptions.status, user_subscriptions.expires_at
     FROM users
     LEFT JOIN user_profiles ON users.id = user_profiles.user_id
+    LEFT JOIN user_subscriptions ON users.id = user_subscriptions.user_id
     LIMIT 100
-  `).all<{ id: string; email: string; display_name: string | null }>();
+  `).all<{ id: string; email: string; display_name: string | null; plan_tier: string | null; status: string | null; expires_at: string | null }>();
 
-  const userList: UserListItem[] = [];
+  const userList: any[] = [];
   for (const u of (users || [])) {
     const uFlags = await getUserFlags(context.env.DB, u.id);
 
@@ -56,13 +58,22 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       if (!uFlags.includes("edit_flags")) uFlags.push("edit_flags");
     }
 
+    const isVipTier = u.plan_tier && u.plan_tier !== 'free' && u.status === 'active';
+    if (isVipTier && !uFlags.includes("vip")) {
+      uFlags.push("vip");
+    }
+
     userList.push({
       id: u.id,
       email: u.email,
       display_name: u.display_name || (u.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590" ? "thy" : u.email.split('@')[0]),
-      flags: uFlags
+      flags: uFlags,
+      plan_tier: u.plan_tier || 'free',
+      status: u.status || 'active',
+      expires_at: u.expires_at
     });
   }
+
 
   return new Response(JSON.stringify({ users: userList }), {
     headers: { "Content-Type": "application/json", ...corsHeaders }

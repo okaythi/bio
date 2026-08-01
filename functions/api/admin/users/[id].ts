@@ -104,13 +104,15 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
           try { currentFlags = JSON.parse(flagsRow.data_json).flags || []; } catch {}
         }
 
-        if (body.subscription.plan_tier === 'vip') {
+        const isVipTier = body.subscription.plan_tier && body.subscription.plan_tier !== 'free';
+        if (isVipTier) {
           if (!currentFlags.includes('vip')) {
             currentFlags.push('vip');
           }
         } else if (body.subscription.plan_tier === 'free') {
           currentFlags = currentFlags.filter(f => f !== 'vip');
         }
+
 
         await db.prepare(`
           INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
