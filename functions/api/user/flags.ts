@@ -87,9 +87,33 @@ export const onRequestPut: PagesFunction<Env> = async (context) => {
 
     await setUserMetadataExt(context.env.DB, targetUserId, 'flags', { flags: cleanFlags, updated_at: new Date().toISOString() });
 
+    if (cleanFlags.includes("vip")) {
+      const currentSub = await context.env.DB.prepare(
+        "SELECT expires_at FROM user_subscriptions WHERE user_id = ?"
+      ).bind(targetUserId).first<{ expires_at?: string }>();
+
+      let expDate = currentSub?.expires_at;
+      if (!expDate || new Date(expDate) < new Date()) {
+        expDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      }
+
+      await context.env.DB.prepare(`
+        INSERT INTO user_subscriptions (user_id, plan_tier, status, expires_at, updated_at)
+        VALUES (?, 'vip', 'active', ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET plan_tier = 'vip', status = 'active', expires_at = excluded.expires_at, updated_at = CURRENT_TIMESTAMP
+      `).bind(targetUserId, expDate).run();
+    } else {
+      await context.env.DB.prepare(`
+        INSERT INTO user_subscriptions (user_id, plan_tier, status, expires_at, updated_at)
+        VALUES (?, 'free', 'active', NULL, CURRENT_TIMESTAMP)
+        ON CONFLICT(user_id) DO UPDATE SET plan_tier = 'free', status = 'active', expires_at = NULL, updated_at = CURRENT_TIMESTAMP
+      `).bind(targetUserId).run();
+    }
+
     return new Response(JSON.stringify({ success: true, targetUserId, flags: cleanFlags }), {
       headers: { "Content-Type": "application/json", ...corsHeaders }
     });
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: `Flag update failed: ${message}` }), {

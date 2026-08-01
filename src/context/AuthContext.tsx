@@ -73,23 +73,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const isVip = Boolean(
     user && (
-      user.subscription?.plan_tier === 'vip' ||
+      (user.subscription?.plan_tier === 'vip' && user.subscription?.status === 'active') ||
       user.subscription?.is_vip ||
-      flags.includes('vip') ||
-      isThyOwner
+      flags.includes('vip')
     )
   );
 
   const vipExpiresAt = user?.subscription?.expires_at || null;
 
-  let planTierLabel = (user?.subscription?.plan_tier || 'free').toUpperCase();
+  let planTierLabel = 'FREE';
   if (isVip) {
     planTierLabel = 'VIP';
     if (vipExpiresAt) {
       const expDate = new Date(vipExpiresAt);
-      planTierLabel += ` (Expires ${expDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })})`;
+      planTierLabel += ` (Expires ${expDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })})`;
+    } else {
+      planTierLabel += ` (Lifetime Pass)`;
     }
   }
+
 
 
   useEffect(() => {

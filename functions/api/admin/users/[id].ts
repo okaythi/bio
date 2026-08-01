@@ -97,24 +97,29 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
           await db.prepare(`INSERT INTO user_subscriptions (user_id, ${keys.join(', ')}) VALUES (?, ${placeholders})`).bind(userId, ...vals).run();
         }
 
-        // If tier was updated to VIP, auto-sync VIP flag in user_metadata_ext
+        // Sync flags with subscription tier
+        const flagsRow = await db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first<{ data_json: string }>();
+        let currentFlags: string[] = [];
+        if (flagsRow?.data_json) {
+          try { currentFlags = JSON.parse(flagsRow.data_json).flags || []; } catch {}
+        }
+
         if (body.subscription.plan_tier === 'vip') {
-          const flagsRow = await db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first<{ data_json: string }>();
-          let currentFlags: string[] = [];
-          if (flagsRow?.data_json) {
-            try { currentFlags = JSON.parse(flagsRow.data_json).flags || []; } catch {}
-          }
           if (!currentFlags.includes('vip')) {
             currentFlags.push('vip');
-            await db.prepare(`
-              INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
-              VALUES (?, 'flags', ?, CURRENT_TIMESTAMP)
-              ON CONFLICT(user_id, namespace) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP
-            `).bind(userId, JSON.stringify({ flags: currentFlags, updated_at: new Date().toISOString() })).run();
           }
+        } else if (body.subscription.plan_tier === 'free') {
+          currentFlags = currentFlags.filter(f => f !== 'vip');
         }
+
+        await db.prepare(`
+          INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
+          VALUES (?, 'flags', ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(user_id, namespace) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP
+        `).bind(userId, JSON.stringify({ flags: currentFlags, updated_at: new Date().toISOString() })).run();
       }
     }
+
 
 
     if (body.metadata && Array.isArray(body.metadata)) {
