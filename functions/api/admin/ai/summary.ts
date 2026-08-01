@@ -14,9 +14,11 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
 
     if (context.env.AI) {
       const modelsToTry = [
-        '@cf/meta/llama-3.1-8b-instruct',
-        '@cf/meta/llama-3-8b-instruct',
-        '@cf/mistral/mistral-7b-instruct-v0.1'
+        '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
+        '@cf/meta/llama-3.2-3b-instruct',
+        '@cf/meta/llama-3.1-8b-instruct-fp8',
+        '@cf/mistral/mistral-7b-instruct-v0.2',
+        '@cf/meta/llama-3-8b-instruct'
       ];
 
       const prompt = `Analyze the following user data and provide a concise 2-sentence psychological profile and retention risk assessment for an admin dashboard. Do not use markdown headers or bullet points.
