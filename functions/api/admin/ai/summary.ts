@@ -21,14 +21,18 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
         '@cf/meta/llama-3-8b-instruct'
       ];
 
-      const prompt = `Analyze the following detailed user telemetry and behavioral profile. Provide a concise, highly insightful 2-sentence psychological profile and retention risk assessment for an admin dashboard. Do not use markdown headers or bullet points.
-      
-      - Activity: ${summaryData.activityStats.active_days_14d || 0} active days in the last 14 days (${summaryData.activityStats.total_events_14d || 0} total interactions).
-      - Media Completion (${historyCount} titles total, ${summaryData.completedTitlesCount} fully finished): ${JSON.stringify(historyList.slice(0, 10))}
-      - Interaction Signals: Rage Clicks: ${summaryData.telemetryStats.rage_click_count || 0}, Indecision Hovers: ${summaryData.telemetryStats.indecision_hover_count || 0}, Banner Dwells: ${summaryData.telemetryStats.banner_dwell_count || 0}, Video Abandonments: ${summaryData.telemetryStats.video_abandoned_count || 0}.
-      - VIP Redemptions / Clicks: ${summaryData.telemetryStats.vip_code_redeemed_count || 0}
-      - Psychometric Vector: ${JSON.stringify(summaryData.behavior)}
-      `;
+      const prompt = `You are an analytics engine for the BIO streaming platform. Analyze the user telemetry metrics below and output exactly 2 concise sentences:
+Sentence 1: Summarize their viewing habits and title completion rate.
+Sentence 2: State their retention risk level (Low, Medium, or High) with a direct reason based on their activity.
+
+User Metrics:
+- 14-Day Active Days: ${summaryData.activityStats.active_days_14d || 0} (${summaryData.activityStats.total_events_14d || 0} total interactions)
+- Total Titles Watched: ${historyCount} (${summaryData.completedTitlesCount} fully completed)
+- Watch History: ${JSON.stringify(historyList.slice(0, 5))}
+- Behavioral Telemetry: Rage Clicks: ${summaryData.telemetryStats.rage_click_count || 0}, Indecision Hovers: ${summaryData.telemetryStats.indecision_hover_count || 0}, Banner Dwells: ${summaryData.telemetryStats.banner_dwell_count || 0}, Video Abandonments: ${summaryData.telemetryStats.video_abandoned_count || 0}
+- VIP Code Redemptions: ${summaryData.telemetryStats.vip_code_redeemed_count || 0}
+
+Rules: Output ONLY the 2 sentences. No preambles, greetings, or markdown headers.`;
 
       for (const modelName of modelsToTry) {
         try {
