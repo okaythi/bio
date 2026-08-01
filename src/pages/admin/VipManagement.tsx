@@ -314,23 +314,75 @@ export default function VipManagement() {
               {genSuccess && <div style={{ padding: '0.75rem', background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.3)', color: '#4ade80', borderRadius: '8px', fontWeight: 600 }}>{genSuccess}</div>}
             </form>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#fff' }}>Active Pass Keys</h3>
-              {codes.map(c => (
-                <div key={c.code} style={{
-                  background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.05)',
-                  padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-                }}>
-                  <div style={{ fontFamily: 'monospace', fontSize: '1.1rem', fontWeight: 700, color: '#ffd700' }}>{c.code}</div>
-                  <div style={{ display: 'flex', gap: '1.5rem', color: '#aaa', fontSize: '0.9rem' }}>
-                    <span>{c.duration_days} Days VIP</span>
-                    <span>Uses: {c.current_uses} / {c.max_uses}</span>
+            {(() => {
+              const activePassKeys = codes.filter(c => (c.current_uses < c.max_uses) && c.is_active !== 0);
+              const depletedPassKeys = codes.filter(c => (c.current_uses >= c.max_uses) || c.is_active === 0);
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  {/* Active Pass Keys Section */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#ffd700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Key size={18} /> Active Pass Keys ({activePassKeys.length})
+                    </h3>
+                    {activePassKeys.map(c => (
+                      <div key={c.code} style={{
+                        background: 'rgba(255, 215, 0, 0.03)', border: '1px solid rgba(255, 215, 0, 0.2)',
+                        padding: '1rem 1.5rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ fontFamily: 'monospace', fontSize: '1.15rem', fontWeight: 800, color: '#ffd700', letterSpacing: '1px' }}>{c.code}</div>
+                          <span style={{
+                            background: 'rgba(74, 222, 128, 0.15)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.3)',
+                            padding: '2px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800
+                          }}>
+                            ACTIVE
+                          </span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '1.5rem', color: '#aaa', fontSize: '0.9rem', alignItems: 'center' }}>
+                          <span>{c.duration_days} Days VIP</span>
+                          <span style={{ color: '#fff', fontWeight: 700 }}>Uses: {c.current_uses} / {c.max_uses}</span>
+                        </div>
+                      </div>
+                    ))}
+                    {activePassKeys.length === 0 && <div style={{ color: '#666', fontStyle: 'italic', padding: '1rem 0' }}>No active pass keys available.</div>}
                   </div>
+
+                  {/* Depleted Pass Keys Section */}
+                  {depletedPassKeys.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#888', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        Depleted / Expired Pass Keys ({depletedPassKeys.length})
+                      </h3>
+                      {depletedPassKeys.map(c => (
+                        <div key={c.code} style={{
+                          background: 'rgba(255,255,255,0.01)', border: '1px solid rgba(255,255,255,0.04)',
+                          padding: '0.85rem 1.5rem', borderRadius: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          opacity: 0.6
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <div style={{ fontFamily: 'monospace', fontSize: '1.05rem', fontWeight: 700, color: '#aaa', textDecoration: 'line-through' }}>{c.code}</div>
+                            <span style={{
+                              background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)',
+                              padding: '2px 8px', borderRadius: '8px', fontSize: '0.7rem', fontWeight: 800
+                            }}>
+                              DEPLETED
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '1.5rem', color: '#666', fontSize: '0.85rem', alignItems: 'center' }}>
+                            <span>{c.duration_days} Days VIP</span>
+                            <span>Uses: {c.current_uses} / {c.max_uses}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
+              );
+            })()}
           </div>
         )}
+
 
         {activeTab === 'requests' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
