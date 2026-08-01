@@ -136,19 +136,31 @@ export async function getUserSummaryData(db: D1Database, userId: string) {
   const flags = flagsRaw as { data_json?: string } | null;
 
   const processedHistory = (history.results || []).map((r: any) => {
-    const pct = r.duration_seconds > 0 ? Math.min(100, Math.round((r.progress_seconds / r.duration_seconds) * 100)) : 0;
+    let pct = 0;
+    if (r.duration_seconds > 0) {
+      pct = Math.min(100, Math.round((r.progress_seconds / r.duration_seconds) * 100));
+    } else if (r.completed || r.progress_seconds > 1800) {
+      pct = 100;
+    }
     return {
       movieId: r.movie_id,
       percentWatched: `${pct}%`,
-      completed: Boolean(r.completed || pct >= 95),
+      pctNumeric: pct,
+      completed: Boolean(r.completed || pct >= 70),
       lastWatched: r.last_watched_at
     };
   });
 
+  const validPcts = processedHistory.map((h: any) => h.pctNumeric);
+  const avgPct = validPcts.length > 0 ? Math.round(validPcts.reduce((a: number, b: number) => a + b, 0) / validPcts.length) : 0;
+  const substantiallyFinished = processedHistory.filter((h: any) => h.completed).length;
+
   return {
     history: processedHistory,
     totalTitlesWatched: processedHistory.length,
-    completedTitlesCount: processedHistory.filter((h: any) => h.completed).length,
+    averagePercentWatched: avgPct,
+    substantiallyFinishedCount: substantiallyFinished,
+    completedTitlesCount: substantiallyFinished,
     behavior: behavior || {},
     telemetryStats: telemetryAgg || {},
     activityStats: activityAgg || {},

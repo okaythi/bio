@@ -22,17 +22,21 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
       ];
 
       const prompt = `You are an analytics engine for the BIO streaming platform. Analyze the user telemetry metrics below and output exactly 2 concise sentences:
-Sentence 1: Summarize their viewing habits and title completion rate.
+Sentence 1: Summarize their viewing habits, average watch progress per title, and titles finished.
 Sentence 2: State their retention risk level (Low, Medium, or High) with a direct reason based on their activity.
 
 User Metrics:
 - 14-Day Active Days: ${summaryData.activityStats.active_days_14d || 0} (${summaryData.activityStats.total_events_14d || 0} total interactions)
-- Total Titles Watched: ${historyCount} (${summaryData.completedTitlesCount} fully completed)
-- Watch History: ${JSON.stringify(historyList.slice(0, 5))}
+- Total Titles Started: ${historyCount}
+- Average Watch Progress per Title: ${summaryData.averagePercentWatched}%
+- Titles Substantially Watched (≥70% or Finished): ${summaryData.substantiallyFinishedCount} of ${historyCount}
+- Watch Progress per Title Breakdown: ${JSON.stringify(historyList.slice(0, 5).map((h: any) => `${h.movieId}: ${h.percentWatched}`))}
 - Behavioral Telemetry: Rage Clicks: ${summaryData.telemetryStats.rage_click_count || 0}, Indecision Hovers: ${summaryData.telemetryStats.indecision_hover_count || 0}, Banner Dwells: ${summaryData.telemetryStats.banner_dwell_count || 0}, Video Abandonments: ${summaryData.telemetryStats.video_abandoned_count || 0}
 - VIP Code Redemptions: ${summaryData.telemetryStats.vip_code_redeemed_count || 0}
 
-Rules: Output ONLY the 2 sentences. No preambles, greetings, or markdown headers.`;
+Rules:
+1. Do NOT claim the user's completion rate is 0% if their average watch progress is ${summaryData.averagePercentWatched}%. Cite their average watch progress (${summaryData.averagePercentWatched}%) and finished titles (${summaryData.substantiallyFinishedCount}/${historyCount}).
+2. Output ONLY the 2 sentences. No preambles, greetings, or markdown headers.`;
 
       for (const modelName of modelsToTry) {
         try {
@@ -63,10 +67,10 @@ Rules: Output ONLY the 2 sentences. No preambles, greetings, or markdown headers
         aiSummaryText = `User is in early discovery with ${activeDays} active session days over the past fortnight and 0 titles completed. Low risk profile with high growth potential upon initial media consumption.`;
       } else if (rageClick > 3 || indecision > 0.6) {
         aiSummaryText = `User exhibits elevated interaction friction (${rageClick} rage clicks, ${summaryData.telemetryStats.video_abandoned_count || 0} video abandonments). Moderate churn risk due to potential content fatigue.`;
-      } else if (commitment > 0.6 || summaryData.completedTitlesCount > 2) {
-        aiSummaryText = `Highly engaged user active ${activeDays} days in the past 2 weeks with ${summaryData.completedTitlesCount}/${historyCount} titles fully completed. Low retention risk; strong content commitment.`;
+      } else if (commitment > 0.6 || summaryData.substantiallyFinishedCount > 0 || summaryData.averagePercentWatched > 50) {
+        aiSummaryText = `Engaged viewer averaging ${summaryData.averagePercentWatched}% watch progress across ${historyCount} titles with ${summaryData.substantiallyFinishedCount} finished. Low retention risk due to high content consumption.`;
       } else {
-        aiSummaryText = `Balanced consumer profile active ${activeDays} days in the past fortnight with ${historyCount} recorded watch sessions. Steady metrics and low churn probability.`;
+        aiSummaryText = `Balanced consumer profile active ${activeDays} days in the past fortnight averaging ${summaryData.averagePercentWatched}% watch progress across ${historyCount} titles. Steady metrics and low churn probability.`;
       }
     }
 
