@@ -9,24 +9,40 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
     const historyCount = historyList.length;
 
     let aiSummaryText: string | null = null;
+    let source: 'ai' | 'heuristic' = 'heuristic';
+    let modelUsed = 'Heuristic Engine';
 
     if (context.env.AI) {
-      try {
-        const prompt = `Analyze the following user data and provide a concise 2-sentence psychological profile and retention risk assessment for an admin dashboard. Do not use markdown headers or bullet points.
-        
-        Watch History Count: ${historyCount}
-        History Sample: ${JSON.stringify(historyList.slice(0, 10).map((r: any) => ({ movieId: r.movie_id, progress: r.progress_seconds, rating: r.rating })))}
-        Behavioral Profile: ${JSON.stringify(behavior || {})}
-        Flags: ${flags?.data_json || '{}'}
-        `;
+      const modelsToTry = [
+        '@cf/meta/llama-3.1-8b-instruct',
+        '@cf/meta/llama-3-8b-instruct',
+        '@cf/mistral/mistral-7b-instruct-v0.1'
+      ];
 
-        const response = await context.env.AI.run('@cf/meta/llama-3-8b-instruct', {
-          messages: [{ role: 'user', content: prompt }]
-        });
+      const prompt = `Analyze the following user data and provide a concise 2-sentence psychological profile and retention risk assessment for an admin dashboard. Do not use markdown headers or bullet points.
+      
+      Watch History Count: ${historyCount}
+      History Sample: ${JSON.stringify(historyList.slice(0, 10).map((r: any) => ({ movieId: r.movie_id, progress: r.progress_seconds, rating: r.rating })))}
+      Behavioral Profile: ${JSON.stringify(behavior || {})}
+      Flags: ${flags?.data_json || '{}'}
+      `;
 
-        aiSummaryText = response?.response || response?.result?.response || null;
-      } catch (aiErr: any) {
-        console.warn('[BIO-AI] Workers AI model execution failed, using psychometric fallback engine:', aiErr?.message);
+      for (const modelName of modelsToTry) {
+        try {
+          const response = await context.env.AI.run(modelName, {
+            messages: [{ role: 'user', content: prompt }]
+          });
+
+          const text = response?.response || response?.result?.response || (typeof response === 'string' ? response : null);
+          if (text) {
+            aiSummaryText = text;
+            source = 'ai';
+            modelUsed = modelName.split('/').pop() || modelName;
+            break;
+          }
+        } catch (mErr: any) {
+          console.warn(`[BIO-AI] Model ${modelName} failed:`, mErr?.message || mErr);
+        }
       }
     }
 
@@ -46,7 +62,7 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
       }
     }
 
-    return new Response(JSON.stringify({ summary: aiSummaryText }), {
+    return new Response(JSON.stringify({ summary: aiSummaryText, source, model: modelUsed }), {
       headers: { "Content-Type": "application/json" }
     });
   } catch (error: any) {
