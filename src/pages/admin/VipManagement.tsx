@@ -20,13 +20,22 @@ export default function VipManagement() {
     fetchData();
   }, []);
 
+  const getAuthHeaders = () => {
+    const adminToken = localStorage.getItem('omni_admin_token') || '';
+    return {
+      'Content-Type': 'application/json',
+      'x-admin-token': adminToken
+    };
+  };
+
   const fetchData = async () => {
     setLoading(true);
     try {
+      const headers = getAuthHeaders();
       const [userRes, codeRes, reqRes] = await Promise.all([
-        fetch('/api/admin/users'),
-        fetch('/api/admin/vip/codes'),
-        fetch('/api/user/vip/requests')
+        fetch('/api/admin/users', { headers, credentials: 'include' }),
+        fetch('/api/admin/vip/codes', { headers, credentials: 'include' }),
+        fetch('/api/user/vip/requests', { headers, credentials: 'include' })
       ]);
 
       if (userRes.ok) {
@@ -55,7 +64,8 @@ export default function VipManagement() {
     try {
       const res = await fetch('/api/admin/vip/codes', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ prefix, durationDays, maxUses })
       });
       const data = await res.json();
@@ -71,19 +81,43 @@ export default function VipManagement() {
 
   const setTier = async (userId: string, tier: string, days: number = 30) => {
     const expDate = days > 0 ? new Date(Date.now() + days * 86400 * 1000).toISOString() : null;
-    await fetch(`/api/admin/users/${userId}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        subscription: {
+
+    // Optimistic UI update
+    setUsers(prev => prev.map(u => {
+      if (u.id === userId) {
+        const currentFlags = u.flags || [];
+        const newFlags = tier === 'free' ? currentFlags.filter((f: string) => f !== 'vip') : Array.from(new Set([...currentFlags, 'vip']));
+        return {
+          ...u,
           plan_tier: tier,
           status: tier === 'free' ? 'canceled' : 'active',
-          expires_at: expDate
-        }
-      })
-    });
-    fetchData();
+          expires_at: expDate,
+          flags: newFlags
+        };
+      }
+      return u;
+    }));
+
+    try {
+      await fetch(`/api/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        credentials: 'include',
+        body: JSON.stringify({
+          subscription: {
+            plan_tier: tier,
+            status: tier === 'free' ? 'canceled' : 'active',
+            expires_at: expDate
+          }
+        })
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      fetchData();
+    }
   };
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%' }}>

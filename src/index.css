@@ -1259,8 +1259,9 @@ body.new-ui .row-header {
 }
 
 .auth-profile-value.username {
-  color: var(--accent);
+  color: var(--text-primary, #ffffff);
 }
+
 
 .auth-profile-value.email {
   font-size: 0.9rem;
