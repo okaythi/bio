@@ -40,6 +40,7 @@ const VipBadge = ({ color, label }: { color: string; label: string }) => {
 export default function Navigation({ searchQuery, onSearchChange }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<'auth' | 'profile' | 'preferences' | 'experiments' | 'staff'>('auth');
   const { user, experiments, isVip, planTierLabel, planTierColor } = useAuth();
 
   useEffect(() => {
@@ -49,6 +50,11 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  const openAuthWithTab = (tab: 'auth' | 'profile' | 'preferences' | 'experiments' | 'staff' = 'auth') => {
+    setAuthModalTab(tab);
+    setIsAuthModalOpen(true);
+  };
 
   const isBetaUser = Boolean(
     user && (
@@ -110,7 +116,7 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
 
           {user && !isVip && (
             <button
-              onClick={() => setIsAuthModalOpen(true)}
+              onClick={() => openAuthWithTab('auth')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 background: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
@@ -127,7 +133,7 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
           )}
 
           <button 
-            onClick={() => setIsAuthModalOpen(true)}
+            onClick={() => openAuthWithTab('auth')}
             style={{
               background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center',
               position: 'relative'
@@ -160,8 +166,7 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
         </div>
       </nav>
 
-      <AuthModal isOpen={isAuthModalOpen} onClose={() => setIsAuthModalOpen(false)} />
+      <AuthModal isOpen={isAuthModalOpen} initialTab={authModalTab} onClose={() => setIsAuthModalOpen(false)} />
     </>
   );
 }
-

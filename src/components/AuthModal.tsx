@@ -14,6 +14,7 @@ import { ALLOWED_EXPERIMENT_BUCKETS, SYSTEM_BUCKETS } from '../config/constants'
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: 'auth' | 'profile' | 'preferences' | 'experiments' | 'staff';
 }
 
 interface AdminUser {
@@ -23,13 +24,21 @@ interface AdminUser {
   flags: string[];
 }
 
-export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
+export default function AuthModal({ isOpen, onClose, initialTab }: AuthModalProps) {
   const { 
     user, login, register, logout, updateProfile, updatePreferences, 
     experiments, updateExperiments, isStaff, canEditFlags, flags: userFlags, updateUserFlags 
   } = useAuth();
   
-  const [activeTab, setActiveTab] = useState<'auth' | 'profile' | 'preferences' | 'experiments' | 'staff'>('auth');
+  const [activeTab, setActiveTab] = useState<'auth' | 'profile' | 'preferences' | 'experiments' | 'staff'>(initialTab || 'auth');
+
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab(initialTab || 'auth');
+      setError(null);
+      setSuccess(null);
+    }
+  }, [isOpen, initialTab]);
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
