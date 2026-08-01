@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, BrainCircuit, Trash2, Shield, User as UserIcon, MonitorSmartphone, Users } from 'lucide-react';
+import { Loader2, BrainCircuit, Trash2, Shield, User as UserIcon, MonitorSmartphone, Users, Crown } from 'lucide-react';
+import { getTierColor, getTierLabel } from '../../context/AuthContext';
 
 export default function UserManagement() {
   const [users, setUsers] = useState<any[]>([]);
@@ -205,61 +206,93 @@ export default function UserManagement() {
                         {userError}
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                      <div style={{ width: 80, height: 80, borderRadius: '50%', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2.5rem', fontWeight: 800, boxShadow: '0 10px 20px rgba(255,42,95,0.3)' }}>
-                        {displayName[0].toUpperCase()}
-                      </div>
-                      <div>
-                        <h2 style={{ margin: 0, fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-1px' }}>{displayName}</h2>
-                        <div style={{ color: '#aaa', marginTop: '0.25rem', fontSize: '1.1rem' }}>{userDetails.user?.email}</div>
-                      </div>
-                    </div>
-                    <div style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem 1.5rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column' }}>
-                        <label style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Subscription Tier</label>
-                        <select 
-                          value={editSubTier}
-                          onChange={e => setEditSubTier(e.target.value)}
-                          disabled={tierUpdating}
-                          style={{ background: 'transparent', color: '#ff2a5f', border: '1px solid rgba(255,42,95,0.3)', borderRadius: '6px', padding: '0.25rem 0.5rem', fontSize: '1.05rem', fontWeight: 700, outline: 'none', cursor: 'pointer', opacity: tierUpdating ? 0.5 : 1 }}
-                        >
-                          <option value="free" style={{ background: '#111', color: '#fff' }}>Free Tier</option>
-                          <option value="vip_silver" style={{ background: '#111', color: '#c0c0c0' }}>VIP Silver</option>
-                          <option value="vip_gold" style={{ background: '#111', color: '#ffd700' }}>VIP Gold</option>
-                          <option value="vip_platinum" style={{ background: '#111', color: '#e5e4e2' }}>VIP Platinum</option>
-                        </select>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                        <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: '2rem', fontWeight: 800, boxShadow: '0 8px 16px rgba(255,42,95,0.3)', flexShrink: 0 }}>
+                          {displayName[0].toUpperCase()}
+                        </div>
+                        <div style={{ overflow: 'hidden' }}>
+                          <h2 style={{ margin: 0, fontSize: '2rem', fontWeight: 800, letterSpacing: '-0.5px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{displayName}</h2>
+                          <div style={{ color: '#aaa', marginTop: '0.2rem', fontSize: '0.95rem', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{userDetails.user?.email}</div>
+                        </div>
                       </div>
                       
-                      {editSubTier !== 'free' && (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <label style={{ fontSize: '0.85rem', color: '#888', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '1px', fontWeight: 600 }}>Duration (Days)</label>
-                          <input 
-                            type="number"
-                            min="1"
-                            value={editSubDays}
-                            onChange={e => setEditSubDays(e.target.value)}
-                            disabled={tierUpdating}
-                            style={{ background: 'transparent', color: '#fff', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '6px', padding: '0.25rem 0.5rem', fontSize: '1.05rem', width: '80px', outline: 'none', opacity: tierUpdating ? 0.5 : 1 }}
-                          />
-                        </div>
-                      )}
+                      <span style={{
+                        background: editSubTier !== 'free' ? `${getTierColor(editSubTier)}22` : 'rgba(255,255,255,0.05)',
+                        color: editSubTier !== 'free' ? getTierColor(editSubTier) : '#888',
+                        border: editSubTier !== 'free' ? `1px solid ${getTierColor(editSubTier)}66` : '1px solid rgba(255,255,255,0.1)',
+                        padding: '6px 14px', borderRadius: '20px', fontSize: '0.85rem', fontWeight: 800,
+                        display: 'flex', alignItems: 'center', gap: '6px'
+                      }}>
+                        {editSubTier !== 'free' && <Crown size={14} />} {getTierLabel(editSubTier)}
+                      </span>
+                    </div>
 
-                      <div style={{ display: 'flex', alignItems: 'flex-end', height: '100%', paddingBottom: '2px' }}>
+                    {/* Dedicated Subscription Control Card */}
+                    <div style={{
+                      background: 'rgba(0, 0, 0, 0.3)', border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '14px', padding: '1.25rem 1.5rem',
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1.25rem'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#ffd700' }}>
+                        <Crown size={20} />
+                        <div>
+                          <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#fff' }}>Manage Subscription</div>
+                          <div style={{ fontSize: '0.8rem', color: '#888' }}>Update member tier level and expiration duration</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          <label style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Tier</label>
+                          <select 
+                            value={editSubTier}
+                            onChange={e => setEditSubTier(e.target.value)}
+                            disabled={tierUpdating}
+                            style={{
+                              background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
+                              borderRadius: '8px', padding: '0.5rem 0.75rem', fontSize: '0.9rem', fontWeight: 600, outline: 'none', cursor: 'pointer'
+                            }}
+                          >
+                            <option value="free" style={{ background: '#111', color: '#fff' }}>Free Tier</option>
+                            <option value="vip_silver" style={{ background: '#111', color: '#c0c0c0' }}>VIP Silver</option>
+                            <option value="vip_gold" style={{ background: '#111', color: '#ffd700' }}>VIP Gold</option>
+                            <option value="vip_platinum" style={{ background: '#111', color: '#e5e4e2' }}>VIP Platinum</option>
+                          </select>
+                        </div>
+
+                        {editSubTier !== 'free' && (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                            <label style={{ fontSize: '0.75rem', color: '#888', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 600 }}>Duration (Days)</label>
+                            <input 
+                              type="number"
+                              min="1"
+                              value={editSubDays}
+                              onChange={e => setEditSubDays(e.target.value)}
+                              disabled={tierUpdating}
+                              style={{
+                                background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.15)',
+                                borderRadius: '8px', padding: '0.5rem 0.75rem', fontSize: '0.9rem', width: '90px', outline: 'none'
+                              }}
+                            />
+                          </div>
+                        )}
+
                         <button
                           onClick={applySubscription}
                           disabled={tierUpdating}
                           style={{
-                            background: 'rgba(74, 222, 128, 0.1)', border: '1px solid rgba(74, 222, 128, 0.4)', color: '#4ade80',
-                            padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 600,
-                            display: 'flex', alignItems: 'center', gap: '0.5rem'
+                            marginTop: 'auto',
+                            background: 'linear-gradient(135deg, #ff2a5f 0%, #ff4444 100%)', border: 'none', color: '#fff',
+                            padding: '0.55rem 1.25rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem',
+                            display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 12px rgba(255,42,95,0.3)',
+                            opacity: tierUpdating ? 0.6 : 1
                           }}
                         >
-                          {tierUpdating ? <Loader2 size={16} className="animate-spin" /> : 'Apply'}
+                          {tierUpdating ? <Loader2 size={16} className="animate-spin" /> : 'Save Subscription'}
                         </button>
                       </div>
                     </div>
-                  </div>
                   </div>
                 );
               })()}
