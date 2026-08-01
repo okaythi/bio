@@ -67,14 +67,15 @@ export default function AdminLayout() {
         borderRight: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', flexDirection: 'column', padding: '2rem 1.5rem'
       }}>
         <div style={{ 
-          fontSize: '1.75rem', fontWeight: 900, letterSpacing: '1px', 
+          fontSize: '1.4rem', fontWeight: 900, letterSpacing: '0.5px', 
           background: 'linear-gradient(135deg, #ff2a5f 0%, #ff7b7b 100%)',
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: '3rem',
-          display: 'flex', alignItems: 'center', gap: '0.5rem'
+          display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap'
         }}>
-          <ShieldAlert size={28} color="#ff2a5f" style={{ WebkitTextFillColor: 'initial' }} />
+          <ShieldAlert size={26} color="#ff2a5f" style={{ WebkitTextFillColor: 'initial', flexShrink: 0 }} />
           OMNICONTROL
         </div>
+
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
           <NavLink to="/d/a" end style={navLinkStyle}>
