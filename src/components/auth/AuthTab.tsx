@@ -87,7 +87,7 @@ export default function AuthTab({
             <div className="auth-profile-label" style={{ color: isVip ? planTierColor : undefined, display: 'flex', alignItems: 'center', gap: '4px' }}>
               {isVip && <Crown size={14} color={planTierColor} />} Subscription Tier
             </div>
-            <div className="auth-profile-value plan" style={{ color: isVip ? planTierColor : undefined, fontWeight: 700 }}>
+            <div className="auth-profile-value plan" style={{ color: isVip ? planTierColor : undefined, fontWeight: 700, textTransform: 'none' }}>
               {planTierLabel}
             </div>
           </div>

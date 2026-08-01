@@ -1274,7 +1274,7 @@ body.new-ui .row-header {
 }
 
 .auth-profile-value.plan {
-  text-transform: uppercase;
+  text-transform: none;
   color: #2ecc71;
 }
 
