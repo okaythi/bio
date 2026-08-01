@@ -23,7 +23,7 @@ interface AuthTabProps {
 }
 
 export default function AuthTab({
-  user, username, userFlags, isRegisterMode, setIsRegisterMode,
+  user, username, userFlags: _userFlags, isRegisterMode, setIsRegisterMode,
   email, setEmail, password, setPassword, displayName, setDisplayName,
   loading, handleAuthSubmit, setError, logout, LogOutIcon
 }: AuthTabProps) {
@@ -129,22 +129,7 @@ export default function AuthTab({
           {redeemMsg && <div style={{ fontSize: '0.8rem', color: '#4ade80', marginTop: '4px' }}>{redeemMsg}</div>}
         </form>
 
-        {userFlags.length > 0 && (
-          <div className="auth-profile-card">
-            <div className="auth-profile-label">Account Flags</div>
-            <div className="auth-flex-wrap">
-              {userFlags.map(f => (
-                <span key={f} className="auth-flag-badge" style={{
-                  background: f === 'vip' ? 'rgba(255,215,0,0.2)' : undefined,
-                  color: f === 'vip' ? '#ffd700' : undefined,
-                  borderColor: f === 'vip' ? 'rgba(255,215,0,0.4)' : undefined
-                }}>
-                  {f}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+
 
         <button onClick={logout} className="auth-signout-btn">
           <LogOutIcon size={18} /> Sign Out

@@ -69,17 +69,17 @@ export const getTierColor = (tier: string | undefined): string => {
 };
 
 export const getTierLabel = (tier: string | undefined): string => {
-  if (tier === 'vip_platinum') return 'PLATINUM';
-  if (tier === 'vip_gold') return 'GOLD';
-  if (tier === 'vip_silver') return 'SILVER';
+  if (tier === 'vip_platinum') return 'Platinum';
+  if (tier === 'vip_gold') return 'Gold';
+  if (tier === 'vip_silver') return 'Silver';
   if (tier === 'vip') return 'VIP'; // Legacy fallback
-  return 'FREE';
+  return 'Free';
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [experiments, setExperiments] = useState<string[]>(["2026-07_public_beta_v1", "2026-07_auto_play_next_video"]);
-  const [likedMovies, setLikedMovies] = useState<string[]>([]);
+  const [likedMovies, setLikedMovies] = useState<any[]>([]);
   const [watchHistory, setWatchHistory] = useState<any[]>([]);
   const [flags, setFlags] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
