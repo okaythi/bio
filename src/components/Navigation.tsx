@@ -8,28 +8,6 @@ interface NavigationProps {
   onSearchChange?: (query: string) => void;
 }
 
-const StaffRedBadge = () => (
-  <div 
-    title="Bio Staff Member" 
-    style={{
-      width: '32px',
-      height: '32px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: 'rgba(229, 9, 20, 0.15)',
-      border: '1px solid rgba(229, 9, 20, 0.5)',
-      borderRadius: '6px',
-      boxShadow: '0 0 10px rgba(229, 9, 20, 0.3)',
-      flexShrink: 0,
-      cursor: 'default'
-    }}
-  >
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="#E50914" style={{ display: 'block', margin: '0 auto' }}>
-      <path fillRule="evenodd" clipRule="evenodd" d="M12 2.5L3.5 6.5V12C3.5 17.25 7.15 22.1 12 23.5C16.85 22.1 20.5 17.25 20.5 12V6.5L12 2.5ZM12 6.8L13.8 10.5L17.9 11.1L14.9 14L15.6 18.1L12 16.2L8.4 18.1L9.1 14L6.1 11.1L10.2 10.5L12 6.8Z" />
-    </svg>
-  </div>
-);
 
 const VipBadge = ({ color, label }: { color: string; label: string }) => {
   // Extract just the tier name without the expiration part for the badge
@@ -62,7 +40,7 @@ const VipBadge = ({ color, label }: { color: string; label: string }) => {
 export default function Navigation({ searchQuery, onSearchChange }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, experiments, isStaff, isVip, planTierLabel, planTierColor } = useAuth();
+  const { user, experiments, isVip, planTierLabel, planTierColor } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -147,8 +125,6 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
               <Sparkles size={13} color="#000" /> Upgrade VIP
             </button>
           )}
-
-          {user && isStaff && <StaffRedBadge />}
 
           <button 
             onClick={() => setIsAuthModalOpen(true)}
