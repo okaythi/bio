@@ -29,9 +29,11 @@ export default function Home() {
       if (!library) return [];
       const fetches = library.map(async (meta) => {
         let tmdbData: TMDBMovie | null = null;
+        let isTvMatch = false;
 
         if (meta.type === 'tv') {
           tmdbData = await searchTV(meta.title, meta.year || '');
+          if (tmdbData) isTvMatch = true;
         }
 
         if (!tmdbData) {
@@ -39,7 +41,11 @@ export default function Home() {
         }
 
         if (tmdbData) {
-          const newMeta: MovieMetadata = { ...meta, tmdbId: tmdbData.id };
+          const newMeta: MovieMetadata = {
+            ...meta,
+            type: isTvMatch ? 'tv' : 'movie',
+            tmdbId: tmdbData.id
+          };
           return { meta: newMeta, tmdbData };
         }
         return null;
@@ -57,8 +63,8 @@ export default function Home() {
   });
 
   const { data: settings } = useQuery({
-    queryKey: ['adminSettings'],
-    queryFn: () => fetch('/api/admin/settings').then(r => r.json()).catch(() => ({ comingSoonList: [] }))
+    queryKey: ['publicSettings'],
+    queryFn: () => fetch('/api/settings').then(r => r.json()).catch(() => ({ comingSoonList: [] }))
   });
 
   const trailerKey = videos?.find(v => v.type === 'Trailer' && v.site === 'YouTube')?.key;
@@ -97,7 +103,7 @@ export default function Home() {
       id: cs.id,
       title: cs.title,
       year: cs.year,
-      type: cs.type,
+      type: cs.type === 'tv' ? 'tv' : 'movie',
       isComingSoon: true,
       description: cs.overview
     } as MovieMetadata,

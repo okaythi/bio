@@ -27,7 +27,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
   const [selectedSeason, setSelectedSeason] = useState(metadata.seasons && metadata.seasons.length > 0 ? metadata.seasons[0].seasonNumber : 1);
   const playerRef = useRef<YouTubePlayer | null>(null);
 
-  const isTVShow = metadata.type === 'tv' || (metadata.seasons && metadata.seasons.length > 0);
+  const isTVShow = metadata.type === 'tv';
 
   const { data: tvDetails } = useQuery({
     queryKey: ['tvDetails', movie.id],
