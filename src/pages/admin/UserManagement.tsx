@@ -16,8 +16,16 @@ export default function UserManagement() {
   const [editSubTier, setEditSubTier] = useState('free');
   const [editSubDays, setEditSubDays] = useState('30');
 
+  const getAuthHeaders = () => {
+    const adminToken = localStorage.getItem('omni_admin_token') || '';
+    return {
+      'Content-Type': 'application/json',
+      'x-admin-token': adminToken
+    };
+  };
+
   useEffect(() => {
-    fetch('/api/admin/users')
+    fetch('/api/admin/users', { headers: getAuthHeaders(), credentials: 'include' })
       .then(r => r.json())
       .then(d => setUsers(d.users || []))
       .catch(console.error);
@@ -28,13 +36,14 @@ export default function UserManagement() {
     setLoading(true);
     setAiSummary('');
     try {
-      const res = await fetch(`/api/admin/users/${u.id}`);
+      const res = await fetch(`/api/admin/users/${u.id}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await res.json();
       setUserDetails(data);
 
       fetch('/api/admin/ai/summary', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ userId: u.id })
       })
       .then(r => r.json())
@@ -70,14 +79,15 @@ export default function UserManagement() {
 
       const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
+        credentials: 'include',
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
         const d = await res.json();
         throw new Error(d.error || 'Failed to update subscription');
       }
-      const freshRes = await fetch(`/api/admin/users/${selectedUser.id}`);
+      const freshRes = await fetch(`/api/admin/users/${selectedUser.id}`, { headers: getAuthHeaders(), credentials: 'include' });
       if (freshRes.ok) {
         setUserDetails(await freshRes.json());
       }
@@ -97,13 +107,15 @@ export default function UserManagement() {
     setUserError('');
     try {
       const res = await fetch(`/api/admin/users/${selectedUser.id}?sessionId=${sessionId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+        credentials: 'include'
       });
       if (!res.ok) {
         const d = await res.json();
         throw new Error(d.error || 'Failed to revoke session');
       }
-      const freshRes = await fetch(`/api/admin/users/${selectedUser.id}`);
+      const freshRes = await fetch(`/api/admin/users/${selectedUser.id}`, { headers: getAuthHeaders(), credentials: 'include' });
       const data = await freshRes.json();
       setUserDetails(data);
     } catch (err: any) {
