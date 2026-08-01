@@ -4,9 +4,9 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
   try {
     const { userId } = await context.request.json<{ userId: string }>();
 
-    const { history, behavior, flags } = await getUserSummaryData(context.env.DB, userId);
-    const historyList = history.results || [];
-    const historyCount = historyList.length;
+    const summaryData = await getUserSummaryData(context.env.DB, userId);
+    const historyList = summaryData.history || [];
+    const historyCount = summaryData.totalTitlesWatched;
 
     let aiSummaryText: string | null = null;
     let source: 'ai' | 'heuristic' = 'heuristic';
@@ -21,12 +21,13 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
         '@cf/meta/llama-3-8b-instruct'
       ];
 
-      const prompt = `Analyze the following user data and provide a concise 2-sentence psychological profile and retention risk assessment for an admin dashboard. Do not use markdown headers or bullet points.
+      const prompt = `Analyze the following detailed user telemetry and behavioral profile. Provide a concise, highly insightful 2-sentence psychological profile and retention risk assessment for an admin dashboard. Do not use markdown headers or bullet points.
       
-      Watch History Count: ${historyCount}
-      History Sample: ${JSON.stringify(historyList.slice(0, 10).map((r: any) => ({ movieId: r.movie_id, progress: r.progress_seconds, rating: r.rating })))}
-      Behavioral Profile: ${JSON.stringify(behavior || {})}
-      Flags: ${flags?.data_json || '{}'}
+      - Activity: ${summaryData.activityStats.active_days_14d || 0} active days in the last 14 days (${summaryData.activityStats.total_events_14d || 0} total interactions).
+      - Media Completion (${historyCount} titles total, ${summaryData.completedTitlesCount} fully finished): ${JSON.stringify(historyList.slice(0, 10))}
+      - Interaction Signals: Rage Clicks: ${summaryData.telemetryStats.rage_click_count || 0}, Indecision Hovers: ${summaryData.telemetryStats.indecision_hover_count || 0}, Banner Dwells: ${summaryData.telemetryStats.banner_dwell_count || 0}, Video Abandonments: ${summaryData.telemetryStats.video_abandoned_count || 0}.
+      - VIP Redemptions / Clicks: ${summaryData.telemetryStats.vip_code_redeemed_count || 0}
+      - Psychometric Vector: ${JSON.stringify(summaryData.behavior)}
       `;
 
       for (const modelName of modelsToTry) {
@@ -49,18 +50,19 @@ export const onRequestPost: PagesFunction<{ AI?: any; DB: any }> = async (contex
     }
 
     if (!aiSummaryText) {
-      const commitment = (behavior as any)?.content_commitment_score ?? 0.75;
-      const indecision = (behavior as any)?.indecision_score ?? 0.2;
-      const rageClick = (behavior as any)?.rage_click_frequency ?? 0;
+      const commitment = (summaryData.behavior as any)?.content_commitment_score ?? 0.75;
+      const indecision = (summaryData.behavior as any)?.indecision_score ?? 0.2;
+      const rageClick = (summaryData.telemetryStats as any)?.rage_click_count ?? 0;
+      const activeDays = (summaryData.activityStats as any)?.active_days_14d ?? 0;
 
       if (historyCount === 0) {
-        aiSummaryText = "User is in the early discovery phase with no completed watch history on record. Low risk profile with high growth potential upon initial media consumption.";
-      } else if (rageClick > 0.4 || indecision > 0.6) {
-        aiSummaryText = `User exhibits elevated interaction friction (Indecision: ${Math.round(indecision * 100)}%, Rage Clicks: ${Math.round(rageClick * 100)}%). Elevated churn risk due to content navigation fatigue.`;
-      } else if (commitment > 0.6) {
-        aiSummaryText = `Highly engaged power user with ${historyCount} titles tracked and ${Math.round(commitment * 100)}% content commitment. Exceptionally low retention risk; candidate for premium feature previews.`;
+        aiSummaryText = `User is in early discovery with ${activeDays} active session days over the past fortnight and 0 titles completed. Low risk profile with high growth potential upon initial media consumption.`;
+      } else if (rageClick > 3 || indecision > 0.6) {
+        aiSummaryText = `User exhibits elevated interaction friction (${rageClick} rage clicks, ${summaryData.telemetryStats.video_abandoned_count || 0} video abandonments). Moderate churn risk due to potential content fatigue.`;
+      } else if (commitment > 0.6 || summaryData.completedTitlesCount > 2) {
+        aiSummaryText = `Highly engaged user active ${activeDays} days in the past 2 weeks with ${summaryData.completedTitlesCount}/${historyCount} titles fully completed. Low retention risk; strong content commitment.`;
       } else {
-        aiSummaryText = `Balanced consumer profile with ${historyCount} recorded playback sessions. Steady engagement metrics and low churn probability.`;
+        aiSummaryText = `Balanced consumer profile active ${activeDays} days in the past fortnight with ${historyCount} recorded watch sessions. Steady metrics and low churn probability.`;
       }
     }
 

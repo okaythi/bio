@@ -110,13 +110,50 @@ export async function insertTelemetryBatch(db: D1Database, events: any[], userId
 }
 
 export async function getUserSummaryData(db: D1Database, userId: string) {
-  const [history, behavior, flagsRaw] = await Promise.all([
-    db.prepare("SELECT * FROM user_watch_history WHERE user_id = ? LIMIT 50").bind(userId).all(),
+  const [history, behavior, flagsRaw, telemetryAgg, activityAgg] = await Promise.all([
+    db.prepare("SELECT movie_id, progress_seconds, duration_seconds, completed, rating, watch_count, last_watched_at FROM user_watch_history WHERE user_id = ? ORDER BY last_watched_at DESC LIMIT 50").bind(userId).all(),
     db.prepare("SELECT * FROM user_behavioral_profiles WHERE user_id = ?").bind(userId).first(),
-    db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first()
+    db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first(),
+    db.prepare(`
+      SELECT 
+        COUNT(CASE WHEN event_type = 'rage_click' THEN 1 END) as rage_click_count,
+        COUNT(CASE WHEN event_type = 'indecision_hover' THEN 1 END) as indecision_hover_count,
+        COUNT(CASE WHEN event_type = 'vip_code_redeemed' THEN 1 END) as vip_code_redeemed_count,
+        COUNT(CASE WHEN event_type = 'intersection' THEN 1 END) as banner_dwell_count,
+        COUNT(CASE WHEN event_type = 'video_abandoned' THEN 1 END) as video_abandoned_count
+      FROM user_telemetry_events 
+      WHERE user_id = ?
+    `).bind(userId).first(),
+    db.prepare(`
+      SELECT 
+        COUNT(DISTINCT DATE(created_at)) as active_days_14d,
+        COUNT(id) as total_events_14d
+      FROM user_telemetry_events 
+      WHERE user_id = ? AND created_at >= DATETIME('now', '-14 days')
+    `).bind(userId).first()
   ]);
+
   const flags = flagsRaw as { data_json?: string } | null;
-  return { history, behavior, flags };
+
+  const processedHistory = (history.results || []).map((r: any) => {
+    const pct = r.duration_seconds > 0 ? Math.min(100, Math.round((r.progress_seconds / r.duration_seconds) * 100)) : 0;
+    return {
+      movieId: r.movie_id,
+      percentWatched: `${pct}%`,
+      completed: Boolean(r.completed || pct >= 95),
+      lastWatched: r.last_watched_at
+    };
+  });
+
+  return {
+    history: processedHistory,
+    totalTitlesWatched: processedHistory.length,
+    completedTitlesCount: processedHistory.filter((h: any) => h.completed).length,
+    behavior: behavior || {},
+    telemetryStats: telemetryAgg || {},
+    activityStats: activityAgg || {},
+    flags: flags?.data_json || '{}'
+  };
 }
 
 export async function getMovieMetadata(db: D1Database, movieId: string) {
