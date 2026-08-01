@@ -703,7 +703,7 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
               </div>
 
               <span className="video-title">
-                {metadata.title} {currentEpisodeData && `- Season ${currentSeason} Episode ${currentEpisodeIndex + 1}: ${currentEpisodeData.title}`}
+                  {metadata.title} {currentEpisodeData && `- Season ${currentSeason} Episode ${currentEpisodeIndex + 1}: ${currentEpisodeData.title.replace(/\.en$/i, '')}`}
                 {(() => {
                   const currentSec = (progress / 100) * (videoRef.current?.duration || 0);
                   const ch = currentEpisodeData?.chapters?.find(c => currentSec >= c.start && currentSec < c.end) || metadata.chapters?.find(c => currentSec >= c.start && currentSec < c.end);
@@ -741,23 +741,42 @@ export default function VideoPlayer({ metadata, initialSeason, initialEpisode }:
                     <div style={{ fontWeight: 'bold', fontSize: '0.9rem' }}>EP</div>
                   </button>
                   <button 
-                    className="cc-button" 
-                    onClick={() => {
-                      const currentSeasonData = metadata.seasons?.find(s => s.seasonNumber === currentSeason);
-                      if (currentSeasonData && currentEpisodeIndex < currentSeasonData.episodes.length - 1) {
-                         setCurrentEpisodeIndex(prev => prev + 1);
-                      } else if (currentSeasonData) {
-                         const nextSeason = metadata.seasons?.find(s => s.seasonNumber === currentSeason + 1);
-                         if (nextSeason && nextSeason.episodes.length > 0) {
+                      onClick={() => {
+                        // Find next available episode in current season
+                        const currentSeasonData = metadata.seasons?.find(s => s.seasonNumber === currentSeason);
+                        if (currentSeasonData) {
+                          const nextAvailIdx = currentSeasonData.episodes.findIndex((ep, idx) => idx > currentEpisodeIndex && (ep.isAvailable ?? true));
+                          if (nextAvailIdx !== -1) {
+                            setCurrentEpisodeIndex(nextAvailIdx);
+                            return;
+                          }
+                          // No more available episodes in this season, try next season
+                          const nextSeason = metadata.seasons?.find(s => s.seasonNumber === currentSeason + 1);
+                          if (nextSeason) {
+                            const firstAvailIdx = nextSeason.episodes.findIndex(ep => ep.isAvailable ?? true);
+                            if (firstAvailIdx !== -1) {
+                              setCurrentSeason(currentSeason + 1);
+                              setCurrentEpisodeIndex(firstAvailIdx);
+                              return;
+                            }
+                          }
+                        }
+                        // Fallback: just increment if nothing else
+                        if (currentSeasonData && currentEpisodeIndex < currentSeasonData.episodes.length - 1) {
+                          setCurrentEpisodeIndex(prev => prev + 1);
+                        } else if (currentSeasonData) {
+                          const nextSeason = metadata.seasons?.find(s => s.seasonNumber === currentSeason + 1);
+                          if (nextSeason && nextSeason.episodes.length > 0) {
                             setCurrentSeason(currentSeason + 1);
                             setCurrentEpisodeIndex(0);
-                         }
-                      }
-                    }}
-                    title="Next Episode"
-                  >
-                    <Play size={20} color="white" />
-                  </button>
+                          }
+                        }
+                      }}
+                      title="Next Episode"
+                      className="cc-button"
+                    >
+                      <Play size={20} color="white" />
+                    </button>
                 </div>
               )}
               {isUsingH264Fallback && (

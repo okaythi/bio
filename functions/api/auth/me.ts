@@ -1,4 +1,4 @@
-import { getUserFlags, D1Database } from '../../lib/db';
+import { getUserFlags, getUserVipStatus, D1Database } from '../../lib/db';
 
 export interface Env {
   DB: D1Database;
@@ -41,9 +41,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       "SELECT display_name, avatar_url, locale, timezone FROM user_profiles WHERE user_id = ?"
     ).bind(session.id).first<{ display_name?: string; avatar_url?: string; locale?: string; timezone?: string }>();
 
-    const subscription = await context.env.DB.prepare(
-      "SELECT plan_tier, status FROM user_subscriptions WHERE user_id = ?"
-    ).bind(session.id).first();
+    const vipInfo = await getUserVipStatus(context.env.DB, session.id);
 
     const preferences = await context.env.DB.prepare(
       "SELECT theme, default_audio_lang, default_subtitle_lang, auto_play_next, player_volume, ui_settings_json FROM user_preferences WHERE user_id = ?"
@@ -54,6 +52,10 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     if (session.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
       if (!flags.includes("is_staff")) flags.push("is_staff");
       if (!flags.includes("edit_flags")) flags.push("edit_flags");
+    }
+
+    if (vipInfo.isVip && !flags.includes("vip")) {
+      flags.push("vip");
     }
 
     const effectiveProfile = {
@@ -69,12 +71,18 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
           role: session.role,
           flags,
           profile: effectiveProfile,
-          subscription,
+          subscription: {
+            plan_tier: vipInfo.planTier,
+            status: vipInfo.status,
+            expires_at: vipInfo.expiresAt,
+            is_vip: vipInfo.isVip
+          },
           preferences
         }
       }),
       { headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
+
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
     return new Response(JSON.stringify({ error: `Session verification error: ${message}` }), {

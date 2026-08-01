@@ -41,6 +41,36 @@ export async function getUserFlags(db: D1Database, userId: string): Promise<stri
   return [];
 }
 
+export async function getUserVipStatus(db: D1Database, userId: string): Promise<{ isVip: boolean; planTier: string; status: string; expiresAt: string | null }> {
+  const [sub, flags] = await Promise.all([
+    db.prepare("SELECT plan_tier, status, expires_at FROM user_subscriptions WHERE user_id = ?").bind(userId).first<{ plan_tier: string; status: string; expires_at: string | null }>(),
+    getUserFlags(db, userId)
+  ]);
+
+  const hasVipFlag = flags.includes('vip');
+
+  if (!sub) {
+    return {
+      isVip: hasVipFlag,
+      planTier: hasVipFlag ? 'vip' : 'free',
+      status: 'active',
+      expiresAt: null
+    };
+  }
+
+  const now = new Date();
+  const isExpired = sub.expires_at ? new Date(sub.expires_at) < now : false;
+  const isTierVip = (sub.plan_tier === 'vip' || sub.plan_tier === 'premium') && sub.status === 'active' && !isExpired;
+
+  return {
+    isVip: isTierVip || hasVipFlag,
+    planTier: isExpired ? 'free' : (isTierVip ? sub.plan_tier : (hasVipFlag ? 'vip' : (sub.plan_tier || 'free'))),
+    status: isExpired ? 'expired' : (sub.status || 'active'),
+    expiresAt: sub.expires_at
+  };
+}
+
+
 export async function getAdminSettings(db: D1Database) {
   const parsed = await getUserMetadataExt(db, 'f9ec8d5b-5e49-4826-86b2-5147bcd58590', 'admin_settings');
   let adminSettings = { vpnCheckEnabled: true, allowlistIps: [] as string[] };

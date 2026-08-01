@@ -141,6 +141,38 @@ CREATE TABLE IF NOT EXISTS user_behavioral_profiles (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- VIP System Tables & Promo Codes
+CREATE TABLE IF NOT EXISTS vip_promo_codes (
+  code TEXT PRIMARY KEY,
+  duration_days INTEGER NOT NULL DEFAULT 30,
+  max_uses INTEGER DEFAULT 1,
+  current_uses INTEGER DEFAULT 0,
+  expires_at DATETIME,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS vip_code_redemptions (
+  id TEXT PRIMARY KEY,
+  code TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  redeemed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (code) REFERENCES vip_promo_codes(code),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS vip_title_requests (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  imdb_id TEXT,
+  title TEXT NOT NULL,
+  year TEXT,
+  poster_url TEXT,
+  votes INTEGER DEFAULT 1,
+  status TEXT DEFAULT 'pending', -- 'pending', 'approved', 'fulfilled', 'rejected'
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
@@ -149,3 +181,5 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_user ON user_telemetry_events(user_id);
 CREATE INDEX IF NOT EXISTS idx_telemetry_event ON user_telemetry_events(event_type);
 CREATE INDEX IF NOT EXISTS idx_user_devices_user ON user_devices(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_locations_user ON user_locations(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_tier_status ON user_subscriptions(plan_tier, status, expires_at);
+

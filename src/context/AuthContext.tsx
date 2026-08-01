@@ -11,6 +11,8 @@ export interface UserProfile {
 export interface UserSubscription {
   plan_tier: string;
   status: string;
+  expires_at?: string | null;
+  is_vip?: boolean;
 }
 
 export interface UserPreferences {
@@ -41,6 +43,9 @@ interface AuthContextType {
   flags: string[];
   isStaff: boolean;
   canEditFlags: boolean;
+  isVip: boolean;
+  vipExpiresAt: string | null;
+  planTierLabel: string;
   login: (email: string, pass: string, turnstile?: string) => Promise<void>;
   register: (email: string, pass: string, displayName?: string, turnstile?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -49,6 +54,7 @@ interface AuthContextType {
   updateExperiments: (experiments: string[]) => Promise<void>;
   updateUserFlags: (targetUserId: string, newFlags: string[]) => Promise<void>;
   toggleLike: (movieId: string) => Promise<boolean>;
+  redeemVipCode: (code: string) => Promise<{ success: boolean; durationDays?: number; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -64,6 +70,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const isThyOwner = Boolean(user && user.id === 'f9ec8d5b-5e49-4826-86b2-5147bcd58590');
   const isStaff = Boolean(user && (user.role === 'admin' || flags.includes('is_staff') || isThyOwner));
   const canEditFlags = Boolean(user && (flags.includes('edit_flags') || isThyOwner));
+
+  const isVip = Boolean(
+    user && (
+      user.subscription?.plan_tier === 'vip' ||
+      user.subscription?.is_vip ||
+      flags.includes('vip') ||
+      isThyOwner
+    )
+  );
+
+  const vipExpiresAt = user?.subscription?.expires_at || null;
+
+  let planTierLabel = (user?.subscription?.plan_tier || 'free').toUpperCase();
+  if (isVip) {
+    planTierLabel = 'VIP';
+    if (vipExpiresAt) {
+      const expDate = new Date(vipExpiresAt);
+      planTierLabel += ` (Expires ${expDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })})`;
+    }
+  }
+
 
   useEffect(() => {
     document.body.classList.add('new-ui');
@@ -237,6 +264,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return isLiked;
   };
 
+  const redeemVipCode = async (code: string) => {
+    const res = await fetch('/api/user/vip/redeem', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to redeem VIP code');
+    await fetchSession();
+    telemetry.track('vip_code_redeemed', { code });
+    return data;
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -247,6 +287,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       flags,
       isStaff,
       canEditFlags,
+      isVip,
+      vipExpiresAt,
+      planTierLabel,
       login,
       register,
       logout,
@@ -254,12 +297,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       updatePreferences,
       updateExperiments,
       updateUserFlags,
-      toggleLike
+      toggleLike,
+      redeemVipCode
     }}>
       {children}
     </AuthContext.Provider>
   );
 };
+
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);

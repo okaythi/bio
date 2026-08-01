@@ -40,18 +40,35 @@ export default function UserManagement() {
   };
 
   const updateField = async (section: string, field: string, value: any) => {
-    if (!userDetails) return;
+    if (!userDetails || !selectedUser) return;
     const current = { ...userDetails };
     if (!current[section]) current[section] = {};
     current[section][field] = value;
+
+    const payload: any = { [section]: { [field]: value } };
+    if (section === 'subscription' && field === 'plan_tier' && value === 'vip') {
+      const expDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+      payload.subscription.status = 'active';
+      payload.subscription.expires_at = expDate;
+      current.subscription.status = 'active';
+      current.subscription.expires_at = expDate;
+    }
+
     setUserDetails(current);
 
     await fetch(`/api/admin/users/${selectedUser.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [section]: { [field]: value } })
+      body: JSON.stringify(payload)
     });
+
+    const res = await fetch(`/api/admin/users/${selectedUser.id}`);
+    if (res.ok) {
+      const data = await res.json();
+      setUserDetails(data);
+    }
   };
+
 
   const revokeSession = async (sessionId: string) => {
     if (!selectedUser) return;

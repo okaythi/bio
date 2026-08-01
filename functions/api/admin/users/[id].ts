@@ -89,15 +89,33 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
       if (updates.length > 0) {
         const existing = await db.prepare("SELECT 1 FROM user_subscriptions WHERE user_id = ?").bind(userId).first();
         if (existing) {
-          await db.prepare(`UPDATE user_subscriptions SET ${updates.join(', ')} WHERE user_id = ?`).bind(...values, userId).run();
+          await db.prepare(`UPDATE user_subscriptions SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`).bind(...values, userId).run();
         } else {
           const keys = Object.keys(body.subscription).filter(k => k !== 'user_id');
-          const vals = keys.map(k => body.subscription[k]);
+          const vals = keys.map(k => (body.subscription as any)[k]);
           const placeholders = keys.map(() => '?').join(', ');
           await db.prepare(`INSERT INTO user_subscriptions (user_id, ${keys.join(', ')}) VALUES (?, ${placeholders})`).bind(userId, ...vals).run();
         }
+
+        // If tier was updated to VIP, auto-sync VIP flag in user_metadata_ext
+        if (body.subscription.plan_tier === 'vip') {
+          const flagsRow = await db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first<{ data_json: string }>();
+          let currentFlags: string[] = [];
+          if (flagsRow?.data_json) {
+            try { currentFlags = JSON.parse(flagsRow.data_json).flags || []; } catch {}
+          }
+          if (!currentFlags.includes('vip')) {
+            currentFlags.push('vip');
+            await db.prepare(`
+              INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
+              VALUES (?, 'flags', ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(user_id, namespace) DO UPDATE SET data_json = excluded.data_json, updated_at = CURRENT_TIMESTAMP
+            `).bind(userId, JSON.stringify({ flags: currentFlags, updated_at: new Date().toISOString() })).run();
+          }
+        }
       }
     }
+
 
     if (body.metadata && Array.isArray(body.metadata)) {
       for (const meta of body.metadata) {

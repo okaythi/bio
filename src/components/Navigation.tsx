@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, User as UserIcon, X } from 'lucide-react';
+import { Search, User as UserIcon, X, Crown, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import AuthModal from './AuthModal';
 
@@ -31,10 +31,33 @@ const StaffRedBadge = () => (
   </div>
 );
 
+const VipGoldBadge = () => (
+  <div 
+    title="VIP Member" 
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      gap: '5px',
+      backgroundColor: 'rgba(255, 215, 0, 0.15)',
+      border: '1px solid rgba(255, 215, 0, 0.6)',
+      borderRadius: '12px',
+      padding: '3px 10px',
+      fontSize: '0.75rem',
+      color: '#ffd700',
+      fontWeight: 700,
+      boxShadow: '0 0 12px rgba(255, 215, 0, 0.35)',
+      userSelect: 'none'
+    }}
+  >
+    <Crown size={13} color="#ffd700" />
+    <span>VIP</span>
+  </div>
+);
+
 export default function Navigation({ searchQuery, onSearchChange }: NavigationProps) {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const { user, experiments, isStaff } = useAuth();
+  const { user, experiments, isStaff, isVip } = useAuth();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -100,27 +123,54 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
             </div>
           )}
 
+          {isVip && <VipGoldBadge />}
+
+          {user && !isVip && (
+            <button
+              onClick={() => setIsAuthModalOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 100%)',
+                border: 'none', borderRadius: '14px', padding: '4px 12px',
+                color: '#000', fontSize: '0.78rem', fontWeight: 800,
+                boxShadow: '0 0 10px rgba(255,215,0,0.4)', cursor: 'pointer',
+                transition: 'transform 0.2s'
+              }}
+              onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+            >
+              <Sparkles size={13} color="#000" /> Upgrade VIP
+            </button>
+          )}
+
           {user && isStaff && <StaffRedBadge />}
 
           <button 
             onClick={() => setIsAuthModalOpen(true)}
             style={{
-              background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center'
+              background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center',
+              position: 'relative'
             }}
           >
             {user?.profile?.avatar_url ? (
               <img 
                 src={user.profile.avatar_url} 
                 alt="Profile Avatar" 
-                style={{ width: 32, height: 32, borderRadius: '4px', objectFit: 'cover' }} 
+                style={{
+                  width: 32, height: 32, borderRadius: '6px', objectFit: 'cover',
+                  border: isVip ? '2px solid #ffd700' : '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: isVip ? '0 0 12px rgba(255, 215, 0, 0.7)' : 'none'
+                }} 
               />
             ) : (
               <div style={{
-                width: 32, height: 32, borderRadius: '4px',
-                backgroundColor: user ? '#E50914' : 'var(--card-bg)',
+                width: 32, height: 32, borderRadius: '6px',
+                backgroundColor: isVip ? '#1a1805' : (user ? '#E50914' : 'var(--card-bg)'),
+                border: isVip ? '2px solid #ffd700' : 'none',
+                boxShadow: isVip ? '0 0 12px rgba(255, 215, 0, 0.7)' : 'none',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: user ? '#fff' : 'var(--foreground)',
-                fontWeight: 600, fontSize: '0.85rem'
+                color: isVip ? '#ffd700' : (user ? '#fff' : 'var(--foreground)'),
+                fontWeight: 700, fontSize: '0.85rem'
               }}>
                 {user ? (user.profile?.display_name?.[0] || user.email[0]).toUpperCase() : <UserIcon size={18} />}
               </div>
@@ -133,3 +183,4 @@ export default function Navigation({ searchQuery, onSearchChange }: NavigationPr
     </>
   );
 }
+
