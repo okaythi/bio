@@ -188,21 +188,28 @@ export async function getUserSummaryData(db: D1Database, userId: string) {
 }
 
 export async function getMovieMetadata(db: D1Database, movieIdOrAdmin?: string | boolean): Promise<any[]> {
-  if (typeof movieIdOrAdmin === 'string' && movieIdOrAdmin.length > 0) {
-    const row = await db.prepare("SELECT data_json FROM movie_metadata WHERE id = ?").bind(movieIdOrAdmin).first<{ data_json: string }>();
-    if (row?.data_json) {
-      try {
-        return [JSON.parse(row.data_json)];
-      } catch {}
-    }
-    return [];
-  }
-  const { results } = await db.prepare("SELECT data_json FROM movie_metadata").all<{ data_json: string }>();
-  return (results || []).map((r) => {
+  const parseRow = (id: string, data_json: string) => {
     try {
-      return JSON.parse(r.data_json);
+      const parsed = JSON.parse(data_json);
+      const match = id.match(/^(.*?)(?:\s+\((\d{4})\))?$/);
+      const title = match ? match[1].trim() : id;
+      const year = match && match[2] ? match[2] : undefined;
+      // Also normalize id to a slug-like format if it isn't already, so "spirited-away" logic works
+      const slugId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      return { id: slugId, originalId: id, title, year, ...parsed };
     } catch {
       return null;
     }
-  }).filter(Boolean);
+  };
+
+  if (typeof movieIdOrAdmin === 'string' && movieIdOrAdmin.length > 0) {
+    const row = await db.prepare("SELECT id, data_json FROM movie_metadata WHERE id = ?").bind(movieIdOrAdmin).first<{ id: string, data_json: string }>();
+    if (row?.data_json) {
+      const parsed = parseRow(row.id, row.data_json);
+      if (parsed) return [parsed];
+    }
+    return [];
+  }
+  const { results } = await db.prepare("SELECT id, data_json FROM movie_metadata").all<{ id: string, data_json: string }>();
+  return (results || []).map((r) => parseRow(r.id, r.data_json)).filter(Boolean);
 }
