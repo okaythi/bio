@@ -38,6 +38,7 @@ export const getMovieVideos = async (tmdbId: number): Promise<TMDBVideo[]> => {
 };
 
 export const searchMovie = async (title: string, year: string): Promise<TMDBMovie | null> => {
+  if (!title) return null;
   const query = encodeURIComponent(title);
   const yearParam = year ? `&year=${year}` : '';
   const res = await fetch(`${TMDB_BASE_URL}/search/movie?query=${query}${yearParam}`, fetchConfig);
@@ -47,6 +48,7 @@ export const searchMovie = async (title: string, year: string): Promise<TMDBMovi
 };
 
 export const searchTV = async (name: string, year: string): Promise<TMDBMovie | null> => {
+  if (!name) return null;
   const query = encodeURIComponent(name);
   const yearParam = year ? `&first_air_date_year=${year}` : '';
   const res = await fetch(`${TMDB_BASE_URL}/search/tv?query=${query}${yearParam}`, fetchConfig);

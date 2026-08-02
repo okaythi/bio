@@ -121,7 +121,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           show = {
             meta: {
               id: meta.tvShowId,
-              title: meta.tvShowTitle || meta.title,
+              title: meta.tvShowTitle || meta.title || meta.name,
               year: meta.year,
               type: 'tv',
               subtitles: [],
@@ -153,7 +153,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
           id: meta.id,
           episodeNumber: meta.episodeNumber || seasonEpisodes.length + 1,
           seasonNumber: seasonNum,
-          title: meta.title,
+          title: meta.title || meta.name || `Episode ${meta.episodeNumber || seasonEpisodes.length + 1}`,
           videoUrl,
           subtitles: episodeSubtitles,
           isAvailable
@@ -172,7 +172,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
 
         resultMovies.push({
           id: meta.id,
-          title: meta.title,
+          title: meta.title || meta.name || 'Unknown Title',
           year: meta.year,
           type: (meta.type as 'movie' | 'tv') || 'movie',
           videoUrl,
