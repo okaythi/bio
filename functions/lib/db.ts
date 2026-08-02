@@ -10,14 +10,6 @@ export interface D1Database {
   batch(stmts: D1PreparedStatement[]): Promise<unknown>;
 }
 
-export interface AdminSettings {
-  vpnCheckEnabled: boolean;
-  allowlistIps: string[];
-  defaultHero?: string;
-  promotedWeights?: Record<string, number>;
-  comingSoonList?: unknown[];
-}
-
 export async function getSessionUser(db: D1Database, sessionId: string) {
   return await db.prepare(`
     SELECT users.id, users.email 
@@ -40,7 +32,7 @@ export async function getUserMetadataExt(db: D1Database, userId: string, namespa
   return null;
 }
 
-export async function setUserMetadataExt(db: D1Database, userId: string, namespace: string, data: unknown) {
+export async function setUserMetadataExt(db: D1Database, userId: string, namespace: string, data: any) {
   await db.prepare(`
     INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
     VALUES (?, ?, ?, CURRENT_TIMESTAMP)
@@ -88,16 +80,17 @@ export async function getUserVipStatus(db: D1Database, userId: string): Promise<
   };
 }
 
-export async function getAdminSettings(db: D1Database): Promise<AdminSettings> {
+
+export async function getAdminSettings(db: D1Database) {
   const parsed = await getUserMetadataExt(db, 'f9ec8d5b-5e49-4826-86b2-5147bcd58590', 'admin_settings');
-  let adminSettings: AdminSettings = { vpnCheckEnabled: true, allowlistIps: [] };
+  let adminSettings: { vpnCheckEnabled: boolean; allowlistIps: string[]; comingSoonList?: any[]; defaultHero?: string; promotedWeights?: Record<string, number>; [key: string]: any } = { vpnCheckEnabled: true, allowlistIps: [] };
   if (parsed) {
     adminSettings = { ...adminSettings, ...parsed };
   }
   return adminSettings;
 }
 
-export async function setAdminSettings(db: D1Database, settings: unknown) {
+export async function setAdminSettings(db: D1Database, settings: any) {
   await setUserMetadataExt(db, 'f9ec8d5b-5e49-4826-86b2-5147bcd58590', 'admin_settings', settings);
 }
 
@@ -108,7 +101,7 @@ export async function getUserFingerprint(db: D1Database, userId: string) {
   return row?.fingerprint_hash;
 }
 
-export async function insertTelemetryBatch(db: D1Database, events: { type?: string; data?: Record<string, unknown>; device?: Record<string, unknown> }[], userId: string | null, sessionId: string | null, ipAddress: string, country: string) {
+export async function insertTelemetryBatch(db: D1Database, events: any[], userId: string | null, sessionId: string | null, ipAddress: string, country: string) {
   const stmt = db.prepare(`
     INSERT INTO user_telemetry_events 
     (id, user_id, session_id, event_type, event_data_json, device_info_json, ip_address, country)
@@ -152,27 +145,25 @@ export async function getUserSummaryData(db: D1Database, userId: string) {
 
   const flags = flagsRaw as { data_json?: string } | null;
 
-  const processedHistory = ((history.results as Record<string, unknown>[]) || []).map((r) => {
+  const processedHistory = (history.results || []).map((r: any) => {
     let pct = 0;
-    const progress = (r.progress_seconds as number) || 0;
-    const duration = (r.duration_seconds as number) || 0;
-    if (duration > 0) {
-      pct = Math.min(100, Math.round((progress / duration) * 100));
-    } else if (r.completed || progress > 1800) {
+    if (r.duration_seconds > 0) {
+      pct = Math.min(100, Math.round((r.progress_seconds / r.duration_seconds) * 100));
+    } else if (r.completed || r.progress_seconds > 1800) {
       pct = 100;
     }
     return {
-      movieId: r.movie_id as string,
+      movieId: r.movie_id,
       percentWatched: `${pct}%`,
       pctNumeric: pct,
       completed: Boolean(r.completed || pct >= 70),
-      lastWatched: r.last_watched_at as string
+      lastWatched: r.last_watched_at
     };
   });
 
-  const validPcts = processedHistory.map((h) => h.pctNumeric);
+  const validPcts = processedHistory.map((h: any) => h.pctNumeric);
   const avgPct = validPcts.length > 0 ? Math.round(validPcts.reduce((a: number, b: number) => a + b, 0) / validPcts.length) : 0;
-  const substantiallyFinished = processedHistory.filter((h) => h.completed).length;
+  const substantiallyFinished = processedHistory.filter((h: any) => h.completed).length;
 
   return {
     history: processedHistory,
@@ -187,29 +178,12 @@ export async function getUserSummaryData(db: D1Database, userId: string) {
   };
 }
 
-export async function getMovieMetadata(db: D1Database, movieIdOrAdmin?: string | boolean): Promise<any[]> {
-  const parseRow = (id: string, data_json: string) => {
+export async function getMovieMetadata(db: D1Database, movieId: string) {
+  const row = await db.prepare("SELECT data_json FROM movie_metadata WHERE id = ?").bind(movieId).first<{ data_json: string }>();
+  if (row?.data_json) {
     try {
-      const parsed = JSON.parse(data_json);
-      const match = id.match(/^(.*?)(?:\s+\((\d{4})\))?$/);
-      const title = match ? match[1].trim() : id;
-      const year = match && match[2] ? match[2] : undefined;
-      // Also normalize id to a slug-like format if it isn't already, so "spirited-away" logic works
-      const slugId = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      return { id: slugId, originalId: id, title, year, ...parsed };
-    } catch {
-      return null;
-    }
-  };
-
-  if (typeof movieIdOrAdmin === 'string' && movieIdOrAdmin.length > 0) {
-    const row = await db.prepare("SELECT id, data_json FROM movie_metadata WHERE id = ?").bind(movieIdOrAdmin).first<{ id: string, data_json: string }>();
-    if (row?.data_json) {
-      const parsed = parseRow(row.id, row.data_json);
-      if (parsed) return [parsed];
-    }
-    return [];
+      return JSON.parse(row.data_json);
+    } catch {}
   }
-  const { results } = await db.prepare("SELECT id, data_json FROM movie_metadata").all<{ id: string, data_json: string }>();
-  return (results || []).map((r) => parseRow(r.id, r.data_json)).filter(Boolean);
+  return null;
 }

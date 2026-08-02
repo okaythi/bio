@@ -1,6 +1,6 @@
-import { getMovieMetadata, getAdminSettings, type D1Database } from '../lib/db';
+import { getMovieMetadata, getAdminSettings } from '../lib/db';
+import type { D1Database } from '../lib/db';
 import { authenticateSession } from '../lib/auth';
-import type { R2Bucket } from '@cloudflare/workers-types';
 
 const R2_CDN = "/api/media";
 
@@ -50,194 +50,192 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const listResult = await context.env.movies.list();
-    const keys = listResult.objects.map((obj: { key: string }) => obj.key);
-
-    const hasSpiritedAwayFolder = keys.some((k: string) => k.startsWith('Spirited Away (2001)/') || k.startsWith('movies/Spirited Away (2001)/'));
-    const spirittedFolderPrefix = keys.some((k: string) => k.startsWith('movies/Spirited Away (2001)/')) ? 'movies/Spirited Away (2001)/' : 'Spirited Away (2001)/';
-
-    const spiritedAwaySubtitles: { lang: string; url: string }[] = [];
-    if (keys.includes(`${spirittedFolderPrefix}spirited_away.vtt`)) {
-      spiritedAwaySubtitles.push({ lang: "en", url: `${R2_CDN}/${spirittedFolderPrefix}spirited_away.vtt` });
-    }
-    if (keys.includes(`${spirittedFolderPrefix}spirited_away_ja.vtt`)) {
-      spiritedAwaySubtitles.push({ lang: "ja", url: `${R2_CDN}/${spirittedFolderPrefix}spirited_away_ja.vtt` });
-    }
-    if (keys.includes(`${spirittedFolderPrefix}spirited_away_vi.vtt`)) {
-      spiritedAwaySubtitles.push({ lang: "vi", url: `${R2_CDN}/${spirittedFolderPrefix}spirited_away_vi.vtt` });
+    const bucket = context.env.movies;
+    if (!bucket) {
+      return new Response(JSON.stringify({ error: "BIO-001: R2 bucket binding missing" }), { status: 500, headers: corsHeaders });
     }
 
-    const { user } = await authenticateSession(context.request, context.env.DB);
-    let isAdminUser = false;
+    const objects = await bucket.list();
+    const moviesMap = new Map<string, MovieItem>();
+    const folderNames = new Set<string>();
 
-    if (user && context.env.DB) {
-      if (user.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590") {
-        isAdminUser = true;
-      } else {
-        const flagRow = await context.env.DB.prepare(
-          "SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'"
-        ).bind(user.id).first<{ data_json: string }>();
+    for (const obj of objects.objects) {
+      if (!obj.key.endsWith(".mp4") && !obj.key.endsWith(".mkv") && !obj.key.endsWith(".srt")) continue;
+      const parts = obj.key.split('/');
+      if (parts.length >= 2) folderNames.add(parts[0]);
+    }
 
-        if (flagRow?.data_json) {
-          try {
-            const parsed = JSON.parse(flagRow.data_json);
-            if (Array.isArray(parsed?.flags) && (parsed.flags.includes("is_staff") || parsed.flags.includes("edit_flags"))) {
-              isAdminUser = true;
-            }
-          } catch {}
-        }
+    const metadataPromises = Array.from(folderNames).map(async (folderName) => {
+      const match = folderName.match(/^(.*?)\s*\((\d{4})\)$/);
+      let title = folderName;
+      let year = "";
+
+      if (match) {
+        title = match[1].trim();
+        year = match[2];
       }
-    }
 
-    const dynamicMovies = await getMovieMetadata(context.env.DB, isAdminUser);
-    const resultMovies: MovieItem[] = [];
-
-    if (hasSpiritedAwayFolder) {
-      const spiritedAwayMeta = dynamicMovies.find((m: { id: string }) => m.id === "spirited-away");
-      resultMovies.push({
-        id: "spirited-away",
-        title: spiritedAwayMeta?.title || "Spirited Away",
-        year: spiritedAwayMeta?.year || "2001",
-        type: (spiritedAwayMeta?.type as 'movie' | 'tv') || "movie",
-        videoUrl: `${R2_CDN}/${spirittedFolderPrefix}spirited_away.mp4`,
-        h264Url: `${R2_CDN}/${spirittedFolderPrefix}spirited_away_h264.mp4`,
-        subtitles: spiritedAwaySubtitles.length > 0 ? spiritedAwaySubtitles : [
-          { lang: "en", url: `${R2_CDN}/${spirittedFolderPrefix}spirited_away.vtt` }
-        ],
-        chapters: spiritedAwayMeta?.chapters,
-        audioChannels: spiritedAwayMeta?.audioChannels || "5.1 Surround",
-        spatialAudio: spiritedAwayMeta?.spatialAudio ?? true
-      });
-    }
-
-    const tvShowsMap = new Map<string, { meta: Record<string, unknown>; seasonsMap: Map<number, EpisodeItem[]> }>();
-
-    for (const meta of dynamicMovies) {
-      if (meta.id === "spirited-away" && hasSpiritedAwayFolder) continue;
-
-      if (meta.type === 'tv' && meta.tvShowId) {
-        let show = tvShowsMap.get(meta.tvShowId);
-        if (!show) {
-          show = {
-            meta: {
-              id: meta.tvShowId,
-              title: meta.tvShowTitle || meta.title || meta.name,
-              year: meta.year,
-              type: 'tv',
-              subtitles: [],
-              audioChannels: meta.audioChannels,
-              spatialAudio: meta.spatialAudio
-            },
-            seasonsMap: new Map()
-          };
-          tvShowsMap.set(meta.tvShowId, show);
-        }
-
-        const seasonNum = meta.seasonNumber || 1;
-        let seasonEpisodes = show.seasonsMap.get(seasonNum);
-        if (!seasonEpisodes) {
-          seasonEpisodes = [];
-          show.seasonsMap.set(seasonNum, seasonEpisodes);
-        }
-
-        const videoKey = meta.videoR2Key || meta.videoUrl;
-        const videoUrl = videoKey ? (videoKey.startsWith('http') ? videoKey : `${R2_CDN}/${videoKey}`) : "";
-        const isAvailable = Boolean(videoKey && (videoKey.startsWith('http') || keys.includes(videoKey)));
-
-        const episodeSubtitles = (meta.subtitles || []).map((sub: { lang: string; url?: string }) => ({
-          lang: sub.lang,
-          url: sub.url ? (sub.url.startsWith('http') ? sub.url : `${R2_CDN}/${sub.url}`) : ""
-        }));
-
-        seasonEpisodes.push({
-          id: meta.id,
-          episodeNumber: meta.episodeNumber || seasonEpisodes.length + 1,
-          seasonNumber: seasonNum,
-          title: meta.title || meta.name || `Episode ${meta.episodeNumber || seasonEpisodes.length + 1}`,
-          videoUrl,
-          subtitles: episodeSubtitles,
-          isAvailable
-        });
-
-      } else {
-        const videoKey = meta.videoR2Key || meta.videoUrl;
-        const videoUrl = videoKey ? (videoKey.startsWith('http') ? videoKey : `${R2_CDN}/${videoKey}`) : "";
-        const h264Key = meta.h264R2Key || meta.h264Url;
-        const h264Url = h264Key ? (h264Key.startsWith('http') ? h264Key : `${R2_CDN}/${h264Key}`) : undefined;
-
-        const subtitles = (meta.subtitles || []).map((sub: { lang: string; url?: string }) => ({
-          lang: sub.lang,
-          url: sub.url ? (sub.url.startsWith('http') ? sub.url : `${R2_CDN}/${sub.url}`) : ""
-        }));
-
-        resultMovies.push({
-          id: meta.id,
-          title: meta.title || meta.name || 'Unknown Title',
-          year: meta.year,
-          type: (meta.type as 'movie' | 'tv') || 'movie',
-          videoUrl,
-          h264Url,
-          subtitles,
-          chapters: meta.chapters,
-          audioChannels: meta.audioChannels,
-          spatialAudio: meta.spatialAudio
-        });
-      }
-    }
-
-    for (const [_, show] of tvShowsMap) {
-      const seasons: SeasonItem[] = [];
-      const sortedSeasonsNums = Array.from(show.seasonsMap.keys()).sort((a, b) => a - b);
+      const dbMeta = await getMovieMetadata(context.env.DB, folderName);
       
-      for (const seasonNum of sortedSeasonsNums) {
-        const episodes = show.seasonsMap.get(seasonNum) || [];
-        episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
-        seasons.push({
-          seasonNumber: seasonNum,
-          episodes
-        });
+      moviesMap.set(folderName, {
+        id: folderName,
+        title,
+        year,
+        type: 'movie',
+        videoUrl: "",
+        subtitles: [],
+        seasons: [],
+        chapters: dbMeta?.chapters,
+        audioChannels: dbMeta?.audioChannels,
+        spatialAudio: dbMeta?.spatialAudio
+      });
+    });
+
+    await Promise.all(metadataPromises);
+
+    for (const obj of objects.objects) {
+      const parts = obj.key.split('/');
+      if (parts.length < 2) continue;
+
+      const folderName = parts[0];
+      const movie = moviesMap.get(folderName);
+      if (!movie) continue;
+
+      const fileName = parts[1];
+      const url = `${R2_CDN}/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`;
+
+      const tvMatch = fileName.match(/^S(\d{1,2})E(\d{1,2})(?:[-_\s](.*?))?\.(mp4|mkv|srt)$/i);
+
+      if (tvMatch) {
+        movie.type = 'tv';
+        const seasonNum = parseInt(tvMatch[1], 10);
+        const epNum = parseInt(tvMatch[2], 10);
+        let rawEpTitle = tvMatch[3] ? tvMatch[3].trim() : `Episode ${epNum}`;
+        const ext = tvMatch[4].toLowerCase();
+
+        if (rawEpTitle && ext === 'srt') {
+          rawEpTitle = rawEpTitle.replace(/\.(?:[a-z]{2,3}(?:-[a-z]{2,4})?)$/i, '').trim();
+        }
+
+        let season = movie.seasons!.find(s => s.seasonNumber === seasonNum);
+        if (!season) {
+          season = { seasonNumber: seasonNum, episodes: [] };
+          movie.seasons!.push(season);
+        }
+
+        let ep = season.episodes.find(e => e.episodeNumber === epNum);
+        if (!ep) {
+          ep = {
+            id: `s${seasonNum}e${epNum}`,
+            episodeNumber: epNum,
+            seasonNumber: seasonNum,
+            title: rawEpTitle,
+            videoUrl: '',
+            subtitles: [],
+            isAvailable: false
+          };
+          season.episodes.push(ep);
+        }
+
+        if (ext === 'mp4' || ext === 'mkv') {
+          ep.videoUrl = url;
+          ep.isAvailable = true;
+          if (!movie.videoUrl) movie.videoUrl = url;
+        } else if (ext === 'srt') {
+          const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
+          const lang = langMatch ? langMatch[1] : "en";
+          ep.subtitles.push({ lang, url });
+        }
+      } else {
+        if (obj.key.endsWith(".mp4") || obj.key.endsWith(".mkv")) {
+          if (fileName.includes(".h264.")) {
+            movie.h264Url = url;
+          } else {
+            movie.videoUrl = url;
+          }
+        } else if (obj.key.endsWith(".srt")) {
+          const langMatch = fileName.match(/\.([a-z]{2,3}(?:-[a-z]{2,4})?)\.srt$/i);
+          const lang = langMatch ? langMatch[1] : "en";
+          movie.subtitles.push({ lang, url });
+        }
+      }
+    }
+
+    for (const movie of moviesMap.values()) {
+      if (movie.seasons && movie.seasons.length > 0) {
+        movie.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber);
+        for (const s of movie.seasons) {
+          s.episodes.sort((a, b) => a.episodeNumber - b.episodeNumber);
+        }
+      }
+    }
+
+    const finalMovies = Array.from(moviesMap.values());
+    
+    // Default Hero & Algorithmic Recommendation logic
+    try {
+      const { user } = await authenticateSession(context.request, context.env.DB);
+      const adminSettings = await getAdminSettings(context.env.DB) as any;
+      const defaultHero = adminSettings.defaultHero;
+      const promotedWeights = adminSettings.promotedWeights || {};
+
+      let targetHero = defaultHero;
+
+      if (user && defaultHero) {
+        const history = await context.env.DB.prepare(
+          "SELECT completed, progress_seconds FROM user_watch_history WHERE user_id = ? AND movie_id = ?"
+        ).bind(user.id, defaultHero).first() as { completed: number, progress_seconds: number } | null;
+
+        if (history && (history.completed === 1 || history.progress_seconds > 0)) {
+          const query = `
+            SELECT movie_id, 
+                   COUNT(*) as watch_count, 
+                   AVG(rating) as avg_rating, 
+                   SUM(CASE WHEN completed = 1 THEN 1 ELSE 0 END) * 1.0 / COUNT(*) as completion_rate
+            FROM user_watch_history 
+            WHERE movie_id != ? AND movie_id NOT IN (SELECT movie_id FROM user_watch_history WHERE user_id = ?)
+            GROUP BY movie_id
+          `;
+          const stats = await context.env.DB.prepare(query).bind(defaultHero, user.id).all();
+          
+          let bestScore = -1;
+          let algorithmicHero = null;
+          for (const row of stats.results as any[]) {
+            const rawScore = (row.watch_count || 0) + ((row.avg_rating || 0) * 2) + ((row.completion_rate || 0) * 10);
+            const multiplier = promotedWeights[row.movie_id] || 1;
+            const finalScore = rawScore * multiplier;
+            if (finalScore > bestScore) {
+              bestScore = finalScore;
+              algorithmicHero = row.movie_id;
+            }
+          }
+          if (algorithmicHero) targetHero = algorithmicHero;
+        }
       }
 
-      const firstEpisode = seasons[0]?.episodes[0];
-      const videoUrl = firstEpisode?.videoUrl || "";
-
-      resultMovies.push({
-        id: show.meta.id as string,
-        title: show.meta.title as string,
-        year: show.meta.year as string,
-        type: show.meta.type as 'tv',
-        subtitles: [],
-        audioChannels: show.meta.audioChannels as string,
-        spatialAudio: show.meta.spatialAudio as boolean,
-        videoUrl,
-        seasons
-      });
-    }
-
-    const promotedWeights: Record<string, number> = {};
-    if (context.env.DB) {
-      try {
-        const adminSettings = await getAdminSettings(context.env.DB);
-        if (adminSettings.promotedWeights) {
-          Object.assign(promotedWeights, adminSettings.promotedWeights);
+      if (targetHero) {
+        const heroIndex = finalMovies.findIndex(m => m.id === targetHero);
+        if (heroIndex > -1) {
+          const [heroMovie] = finalMovies.splice(heroIndex, 1);
+          finalMovies.unshift(heroMovie);
         }
-      } catch {}
+      }
+    } catch (e) {
+      console.error("Hero selection error:", e);
     }
 
-    return new Response(JSON.stringify({ movies: resultMovies, promotedWeights }), {
+    return new Response(JSON.stringify(finalMovies), {
       headers: {
         "Content-Type": "application/json",
         ...corsHeaders
       }
     });
+
   } catch (error: unknown) {
-    const err = error as Error;
-    return new Response(JSON.stringify({ error: err.message }), {
+    const message = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: `BIO-500: ${message}` }), {
       status: 500,
-      headers: {
-        "Content-Type": "application/json",
-        ...corsHeaders
-      }
+      headers: corsHeaders
     });
   }
 };
