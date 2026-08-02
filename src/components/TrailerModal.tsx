@@ -113,7 +113,7 @@ export default function TrailerModal({ movie, metadata, trailerKey, onClose, onO
     if (playerRef.current) {
       if (isMuted) {
         playerRef.current.unMute();
-        const newVol = volume === 0 ? 50 : volume;
+        const newVol = volume === 0 ? 33 : volume;
         playerRef.current.setVolume(newVol);
         setVolume(newVol);
         setIsMuted(false);
