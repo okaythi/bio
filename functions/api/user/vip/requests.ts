@@ -1,5 +1,5 @@
 import { authenticateSession } from '../../../lib/auth';
-import { getUserVipStatus, D1Database } from '../../../lib/db';
+import { getUserVipStatus, type D1Database } from '../../../lib/db';
 
 export interface Env {
   DB: D1Database;
@@ -71,13 +71,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     const cleanTitle = title.trim();
 
-    // Check if title request already exists
     const existing = await context.env.DB.prepare(
       "SELECT id, votes FROM vip_title_requests WHERE LOWER(title) = LOWER(?)"
     ).bind(cleanTitle).first<{ id: string; votes: number }>();
 
     if (existing) {
-      // Upvote existing request!
       await context.env.DB.prepare(
         "UPDATE vip_title_requests SET votes = votes + 1 WHERE id = ?"
       ).bind(existing.id).run();

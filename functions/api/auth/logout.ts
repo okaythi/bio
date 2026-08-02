@@ -1,3 +1,5 @@
+import type { D1Database } from "../../lib/db";
+
 export interface Env {
   DB: D1Database;
 }

@@ -1,4 +1,17 @@
-export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) => {
+import type { D1Database } from '../../../lib/db';
+
+export interface Env {
+  DB: D1Database;
+}
+
+interface UserUpdateBody {
+  user?: Record<string, unknown>;
+  profile?: Record<string, unknown>;
+  subscription?: { plan_tier?: string; [key: string]: unknown };
+  metadata?: { namespace: string; data_json: string }[];
+}
+
+export const onRequestGet: PagesFunction<Env, 'id'> = async (context) => {
   try {
     const userId = context.params.id as string;
     const db = context.env.DB;
@@ -37,21 +50,22 @@ export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) =
       sessions: sessions.results,
       devices: devices.results
     }), { headers: { "Content-Type": "application/json" } });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { "Content-Type": "application/json" } });
+  } catch (error: unknown) {
+    const err = error as Error;
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
 };
 
-export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) => {
+export const onRequestPut: PagesFunction<Env, 'id'> = async (context) => {
   const userId = context.params.id as string;
   const db = context.env.DB;
   
   try {
-    const body = await context.request.json<any>();
+    const body = await context.request.json<UserUpdateBody>();
     
     if (body.user) {
-      const updates = [];
-      const values = [];
+      const updates: string[] = [];
+      const values: unknown[] = [];
       for (const [k, v] of Object.entries(body.user)) {
         if (k !== 'id') {
           updates.push(`${k} = ?`);
@@ -64,8 +78,8 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
     }
 
     if (body.profile) {
-      const updates = [];
-      const values = [];
+      const updates: string[] = [];
+      const values: unknown[] = [];
       for (const [k, v] of Object.entries(body.profile)) {
         if (k !== 'user_id') {
           updates.push(`${k} = ?`);
@@ -78,8 +92,8 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
     }
 
     if (body.subscription) {
-      const updates = [];
-      const values = [];
+      const updates: string[] = [];
+      const values: unknown[] = [];
       for (const [k, v] of Object.entries(body.subscription)) {
         if (k !== 'user_id') {
           updates.push(`${k} = ?`);
@@ -92,12 +106,11 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
           await db.prepare(`UPDATE user_subscriptions SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`).bind(...values, userId).run();
         } else {
           const keys = Object.keys(body.subscription).filter(k => k !== 'user_id');
-          const vals = keys.map(k => (body.subscription as any)[k]);
+          const vals = keys.map(k => (body.subscription as Record<string, unknown>)[k]);
           const placeholders = keys.map(() => '?').join(', ');
           await db.prepare(`INSERT INTO user_subscriptions (user_id, ${keys.join(', ')}) VALUES (?, ${placeholders})`).bind(userId, ...vals).run();
         }
 
-        // Sync flags with subscription tier
         const flagsRow = await db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first<{ data_json: string }>();
         let currentFlags: string[] = [];
         if (flagsRow?.data_json) {
@@ -113,7 +126,6 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
           currentFlags = currentFlags.filter(f => f !== 'vip');
         }
 
-
         await db.prepare(`
           INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
           VALUES (?, 'flags', ?, CURRENT_TIMESTAMP)
@@ -121,8 +133,6 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
         `).bind(userId, JSON.stringify({ flags: currentFlags, updated_at: new Date().toISOString() })).run();
       }
     }
-
-
 
     if (body.metadata && Array.isArray(body.metadata)) {
       for (const meta of body.metadata) {
@@ -135,12 +145,13 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
     }
 
     return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  } catch (e: unknown) {
+    const err = e as Error;
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 };
 
-export const onRequestDelete: PagesFunction<{ DB: D1Database }> = async (context) => {
+export const onRequestDelete: PagesFunction<Env, 'id'> = async (context) => {
   const userId = context.params.id as string;
   const db = context.env.DB;
   
@@ -154,7 +165,8 @@ export const onRequestDelete: PagesFunction<{ DB: D1Database }> = async (context
     }
     
     return new Response(JSON.stringify({ error: "Bad Request" }), { status: 400 });
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500 });
+  } catch (e: unknown) {
+    const err = e as Error;
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 };

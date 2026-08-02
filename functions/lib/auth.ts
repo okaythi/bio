@@ -1,4 +1,4 @@
-import { getSessionUser, D1Database } from './db';
+import { getSessionUser, type D1Database } from './db';
 
 export async function authenticateSession(request: Request, db: D1Database) {
   const cookieHeader = request.headers.get("Cookie") || "";
@@ -14,11 +14,9 @@ export async function authenticateSession(request: Request, db: D1Database) {
     return { user: null, sessionId: null, error: "Access Denied: Missing session identifier." };
   }
 
-  // If header token session doesn't exist in sessions DB table yet, auto-create it
   let user = await getSessionUser(db, sessionId);
 
   if (!user && headerToken) {
-    // Owner token fallback
     const owner = await db.prepare("SELECT id, email FROM users WHERE id = 'f9ec8d5b-5e49-4826-86b2-5147bcd58590' OR role = 'admin' LIMIT 1").first<{ id: string; email: string }>();
     if (owner) {
       const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -37,7 +35,6 @@ export async function authenticateSession(request: Request, db: D1Database) {
     return { user: null, sessionId: null, error: "Access Denied: Invalid or expired session." };
   }
 
-  // Record/update active device info
   try {
     const ip = request.headers.get("CF-Connecting-IP") || request.headers.get("x-forwarded-for") || "127.0.0.1";
     const ua = request.headers.get("User-Agent") || "Browser Device";
@@ -47,8 +44,7 @@ export async function authenticateSession(request: Request, db: D1Database) {
       VALUES (?, ?, ?, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       ON CONFLICT(fingerprint_hash) DO UPDATE SET session_count = session_count + 1, last_seen_at = CURRENT_TIMESTAMP
     `).bind(fpHash, user.id, ua.substring(0, 60)).run();
-  } catch (e) {}
+  } catch {}
 
   return { user, sessionId, error: null };
 }
-

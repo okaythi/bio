@@ -1,9 +1,11 @@
+import type { R2Bucket, R2GetOptions, D1Database, Headers as WorkerHeaders, R2Conditional } from '@cloudflare/workers-types';
+
 export interface Env {
   movies: R2Bucket;
   DB: D1Database;
 }
 
-export const onRequestGet: PagesFunction<Env> = async (context) => {
+export const onRequestGet: PagesFunction<Env, 'path'> = async (context) => {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -50,7 +52,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       options.range = { offset: start };
     }
   }
-  options.onlyIf = context.request.headers;
+  options.onlyIf = context.request.headers as unknown as R2Conditional;
   
   const object = await context.env.movies.get(key, options);
   
@@ -59,12 +61,13 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   }
 
   const headers = new Headers();
-  object.writeHttpMetadata(headers);
+  object.writeHttpMetadata(headers as unknown as WorkerHeaders);
   headers.set("etag", object.httpEtag);
   headers.set("Accept-Ranges", "bytes");
 
-  if (rangeHeader !== null && (object as any).range) {
-    const range = (object as any).range;
+  const objWithRange = object as unknown as { range?: { offset: number; length: number } };
+  if (rangeHeader !== null && objWithRange.range) {
+    const range = objWithRange.range;
     const offset = range.offset;
     const length = range.length;
     const end = offset + length - 1;
@@ -78,6 +81,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     headers.set(k, v);
   }
 
-  const status = object.body ? (rangeHeader !== null && (object as any).range ? 206 : 200) : 304;
-  return new Response(object.body, { headers, status });
+  const status = object.body ? (rangeHeader !== null && objWithRange.range ? 206 : 200) : 304;
+  return new Response(object.body as unknown as BodyInit, { headers, status });
 };

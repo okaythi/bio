@@ -1,4 +1,4 @@
-import { getAdminSettings, D1Database } from '../lib/db';
+import { getAdminSettings, type D1Database } from '../lib/db';
 
 export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) => {
   const corsHeaders = {
@@ -12,7 +12,7 @@ export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) =
   }
 
   try {
-    const settings = await getAdminSettings(context.env.DB) as any;
+    const settings = await getAdminSettings(context.env.DB);
     return new Response(JSON.stringify({
       comingSoonList: settings.comingSoonList || [],
       defaultHero: settings.defaultHero || ""
@@ -22,7 +22,7 @@ export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) =
         ...corsHeaders
       }
     });
-  } catch (error: any) {
+  } catch {
     return new Response(JSON.stringify({ comingSoonList: [], defaultHero: "" }), {
       headers: {
         "Content-Type": "application/json",

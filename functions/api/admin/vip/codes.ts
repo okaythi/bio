@@ -1,8 +1,15 @@
 import { authenticateSession } from '../../../lib/auth';
-import { getUserFlags, D1Database } from '../../../lib/db';
+import { getUserFlags, type D1Database } from '../../../lib/db';
 
 export interface Env {
   DB: D1Database;
+}
+
+interface PromoCodeCreateBody {
+  prefix?: string;
+  planTier?: string;
+  durationDays?: string | number;
+  maxUses?: string | number;
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -59,11 +66,11 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   }
 
   try {
-    const body = await context.request.json<any>();
+    const body = await context.request.json<PromoCodeCreateBody>();
     const prefix = body?.prefix || "VIP";
     const planTier = body?.planTier || "vip_silver";
-    const durationDays = parseInt(body?.durationDays || 30, 10);
-    const maxUses = parseInt(body?.maxUses || 1, 10);
+    const durationDays = parseInt(String(body?.durationDays || 30), 10);
+    const maxUses = parseInt(String(body?.maxUses || 1), 10);
 
     const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
     const code = `${prefix}-${randomPart}`;
@@ -77,7 +84,8 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       headers: { "Content-Type": "application/json", ...corsHeaders }
     });
 
-  } catch (e: any) {
-    return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: corsHeaders });
+  } catch (e: unknown) {
+    const err = e as Error;
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders });
   }
 };

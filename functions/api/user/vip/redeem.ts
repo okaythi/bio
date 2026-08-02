@@ -1,5 +1,5 @@
 import { authenticateSession } from '../../../lib/auth';
-import { D1Database } from '../../../lib/db';
+import { type D1Database } from '../../../lib/db';
 
 export interface Env {
   DB: D1Database;
@@ -65,7 +65,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // Check if user already redeemed this code
     const previousRedemption = await context.env.DB.prepare(
       "SELECT 1 FROM vip_code_redemptions WHERE code = ? AND user_id = ?"
     ).bind(promo.code, user.id).first();
@@ -77,7 +76,6 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       });
     }
 
-    // Calculate new expiration date
     const durationDays = promo.duration_days || 30;
     const planTier = promo.plan_tier || 'vip_silver';
     const currentSub = await context.env.DB.prepare(
@@ -86,19 +84,17 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     let startDate = new Date();
     if (currentSub?.expires_at && new Date(currentSub.expires_at) > new Date()) {
-      startDate = new Date(currentSub.expires_at); // Extend existing subscription!
+      startDate = new Date(currentSub.expires_at);
     }
 
     const newExpiresAt = new Date(startDate.getTime() + durationDays * 24 * 60 * 60 * 1000).toISOString();
 
-    // Upsert subscription
     await context.env.DB.prepare(`
       INSERT INTO user_subscriptions (user_id, plan_tier, status, expires_at, updated_at)
       VALUES (?, ?, 'active', ?, CURRENT_TIMESTAMP)
       ON CONFLICT(user_id) DO UPDATE SET plan_tier = excluded.plan_tier, status = 'active', expires_at = excluded.expires_at, updated_at = CURRENT_TIMESTAMP
     `).bind(user.id, planTier, newExpiresAt).run();
 
-    // Record redemption & increment use count
     const redemptionId = crypto.randomUUID();
     await context.env.DB.batch([
       context.env.DB.prepare(

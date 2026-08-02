@@ -1,4 +1,5 @@
 import { verifyTurnstile } from "../_turnstile";
+import type { D1Database } from "../../lib/db";
 
 export interface Env {
   DB: D1Database;
@@ -20,7 +21,7 @@ interface PreferencesRequestBody {
   ui_settings_json?: Record<string, unknown>;
 }
 
-async function getUserIdFromSession(context: EventContext<Env, string, Record<string, unknown>>): Promise<string | null> {
+async function getUserIdFromSession(context: AppEventContext<Env>): Promise<string | null> {
   const cookieHeader = context.request.headers.get("Cookie") || "";
   const match = cookieHeader.match(/session_id=([^;]+)/);
   const sessionId = match ? match[1] : null;

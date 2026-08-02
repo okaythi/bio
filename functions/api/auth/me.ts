@@ -1,4 +1,4 @@
-import { getUserFlags, getUserVipStatus, D1Database } from '../../lib/db';
+import { getUserFlags, getUserVipStatus, type D1Database } from '../../lib/db';
 
 export interface Env {
   DB: D1Database;

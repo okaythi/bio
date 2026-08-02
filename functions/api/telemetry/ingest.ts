@@ -1,8 +1,10 @@
+import type { R2Bucket } from '@cloudflare/workers-types';
+
 export interface Env {
-  TELEMETRY_ANALYTICS?: any;
+  TELEMETRY_ANALYTICS?: { writeDataPoint(data: { blobs?: string[]; doubles?: number[]; indexes?: string[] }): void };
   TELEMETRY_BLOBS?: R2Bucket;
-  TELEMETRY_QUEUE?: Queue;
-  AI?: any;
+  TELEMETRY_QUEUE?: { send(message: unknown): Promise<void> };
+  AI?: { run(model: string, input: unknown): Promise<unknown> };
 }
 
 export const onRequestOptions: PagesFunction = async () => {
@@ -19,14 +21,22 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
   const { request, env } = context;
   
   try {
-    const payload = await request.json<any>();
+    const payload = await request.json<{
+      userId?: string;
+      sessionId?: string;
+      eventType?: string;
+      rawTraces?: Record<string, unknown>;
+      hardwareFingerprint?: string;
+      semanticEvents?: Record<string, unknown>[];
+    }>();
     
-    const cf = request.cf || {};
-    const asOrg = (cf.asOrganization as string) || '';
+    const reqWithCf = request as unknown as { cf?: { asOrganization?: string; clientTrustScore?: number; country?: string; region?: string; city?: string } };
+    const cf = reqWithCf.cf || {};
+    const asOrg = cf.asOrganization || '';
     const isVpn = asOrg.toLowerCase().includes('vpn') || 
                   asOrg.toLowerCase().includes('proxy') || 
                   asOrg.toLowerCase().includes('hosting') ||
-                  (cf.clientTrustScore && (cf.clientTrustScore as number) < 30);
+                  (cf.clientTrustScore !== undefined && cf.clientTrustScore < 30);
                   
     const locationData = {
       country: cf.country || 'Unknown',
@@ -42,7 +52,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
         blobs: [
           payload.userId || 'anonymous',
           payload.sessionId || 'unknown',
-          locationData.country as string,
+          locationData.country,
           payload.eventType || 'ping',
         ],
         doubles: [
@@ -82,8 +92,9 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       },
     });
 
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { 
+  } catch (error: unknown) {
+    const err = error as Error;
+    return new Response(JSON.stringify({ error: err.message }), { 
       status: 400,
       headers: { 'Access-Control-Allow-Origin': '*' }
     });

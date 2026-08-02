@@ -1,16 +1,55 @@
-import { getAdminSettings, setAdminSettings, D1Database } from '../../lib/db';
+import { getAdminSettings, setAdminSettings, type D1Database } from '../../lib/db';
 
-export const onRequestGet: PagesFunction<{ DB: D1Database }> = async (context) => {
-  const settings = await getAdminSettings(context.env.DB);
-  return new Response(JSON.stringify(settings), {
-    headers: { "Content-Type": "application/json" }
-  });
+export interface Env {
+  DB: D1Database;
+}
+
+export const onRequestGet: PagesFunction<Env> = async (context) => {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const settings = await getAdminSettings(context.env.DB);
+    return new Response(JSON.stringify({
+      comingSoonList: settings.comingSoonList || [],
+      defaultHero: settings.defaultHero || ""
+    }), {
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders
+      }
+    });
+  } catch {
+    return new Response(JSON.stringify({ comingSoonList: [], defaultHero: "" }), {
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders
+      }
+    });
+  }
 };
 
-export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) => {
+export const onRequestPut: PagesFunction<Env> = async (context) => {
+  const corsHeaders = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "PUT, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  };
+
+  if (context.request.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
   try {
-    const body = await context.request.json<{ vpnCheckEnabled?: boolean; allowlistIps?: string[]; defaultHero?: string; promotedWeights?: Record<string, number>; comingSoonList?: any[] }>();
-    const current = await getAdminSettings(context.env.DB) as any;
+    const body = await context.request.json<{ vpnCheckEnabled?: boolean; allowlistIps?: string[]; defaultHero?: string; promotedWeights?: Record<string, number>; comingSoonList?: unknown[] }>();
+    const current = (await getAdminSettings(context.env.DB)) as unknown as Record<string, unknown>;
 
     if (body.vpnCheckEnabled !== undefined) current.vpnCheckEnabled = body.vpnCheckEnabled;
     if (body.allowlistIps !== undefined) current.allowlistIps = body.allowlistIps;
@@ -20,10 +59,20 @@ export const onRequestPut: PagesFunction<{ DB: D1Database }> = async (context) =
 
     await setAdminSettings(context.env.DB, current);
 
-    return new Response(JSON.stringify(current), {
-      headers: { "Content-Type": "application/json" }
+    return new Response(JSON.stringify({ success: true, settings: current }), {
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders
+      }
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: {
+        "Content-Type": "application/json",
+        ...corsHeaders
+      }
+    });
   }
 };

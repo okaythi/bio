@@ -1,7 +1,11 @@
 import { authenticateSession } from '../../lib/auth';
-import { getUserFlags, getAdminSettings, getUserFingerprint } from '../../lib/db';
+import { getUserFlags, getAdminSettings, getUserFingerprint, type D1Database } from '../../lib/db';
 
-export const onRequest: PagesFunction<{ DB: any }> = async (context) => {
+export interface Env {
+  DB: D1Database;
+}
+
+export const onRequest: PagesFunction<Env> = async (context) => {
   const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
@@ -12,12 +16,12 @@ export const onRequest: PagesFunction<{ DB: any }> = async (context) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const { user, sessionId, error } = await authenticateSession(context.request, context.env.DB);
+  const { user, error } = await authenticateSession(context.request, context.env.DB);
   if (error || !user) {
     return new Response(JSON.stringify({ error: error || "Access Denied" }), { status: 401, headers: corsHeaders });
   }
 
-  let callerFlags = await getUserFlags(context.env.DB, user.id);
+  const callerFlags = await getUserFlags(context.env.DB, user.id);
 
   const isOwner = user.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590";
   if (isOwner) {
@@ -40,9 +44,10 @@ export const onRequest: PagesFunction<{ DB: any }> = async (context) => {
   }
 
   if (adminSettings.vpnCheckEnabled) {
-    const cf = context.request.cf || {};
-    const asOrg = (cf.asOrganization as string || "").toLowerCase();
-    const isVpn = asOrg.includes('vpn') || asOrg.includes('proxy') || asOrg.includes('hosting') || (cf.clientTrustScore && (cf.clientTrustScore as number) < 30);
+    const reqWithCf = context.request as unknown as { cf?: { asOrganization?: string; clientTrustScore?: number } };
+    const cf = reqWithCf.cf || {};
+    const asOrg = (cf.asOrganization || "").toLowerCase();
+    const isVpn = asOrg.includes('vpn') || asOrg.includes('proxy') || asOrg.includes('hosting') || (cf.clientTrustScore !== undefined && cf.clientTrustScore < 30);
     
     if (isVpn) {
       return new Response(JSON.stringify({ error: "Access Denied: VPN, Proxy, or low trust network detected. Disable VPN to access the OmniControl Center." }), { status: 403, headers: corsHeaders });

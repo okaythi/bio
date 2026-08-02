@@ -1,15 +1,8 @@
 import { authenticateSession } from '../../lib/auth';
-import { getUserFlags, D1Database } from '../../lib/db';
+import { getUserFlags, type D1Database } from '../../lib/db';
 
 export interface Env {
   DB: D1Database;
-}
-
-interface UserListItem {
-  id: string;
-  email: string;
-  display_name: string | null;
-  flags: string[];
 }
 
 export const onRequestGet: PagesFunction<Env> = async (context) => {
@@ -49,7 +42,7 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
     LIMIT 100
   `).all<{ id: string; email: string; display_name: string | null; plan_tier: string | null; status: string | null; expires_at: string | null }>();
 
-  const userList: any[] = [];
+  const userList: Record<string, unknown>[] = [];
   for (const u of (users || [])) {
     const uFlags = await getUserFlags(context.env.DB, u.id);
 
@@ -73,7 +66,6 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
       expires_at: u.expires_at
     });
   }
-
 
   return new Response(JSON.stringify({ users: userList }), {
     headers: { "Content-Type": "application/json", ...corsHeaders }

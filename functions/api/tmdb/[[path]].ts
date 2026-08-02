@@ -2,7 +2,7 @@ export interface Env {
   VITE_TMDB_API_TOKEN: string;
 }
 
-export const onRequest: PagesFunction<Env> = async (context) => {
+export const onRequest: PagesFunction<Env, 'path'> = async (context) => {
   const { request, env, params } = context;
   const pathArray = params.path as string[];
   
@@ -13,7 +13,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
   const tmdbPath = pathArray.join("/");
   const url = new URL(request.url);
   
-  // Construct TMDB URL, keeping the original query parameters
   const tmdbUrl = new URL(`https://api.themoviedb.org/3/${tmdbPath}${url.search}`);
   
   const token = env.VITE_TMDB_API_TOKEN;
@@ -33,8 +32,6 @@ export const onRequest: PagesFunction<Env> = async (context) => {
     }
   });
 
-  // Create a new response to modify headers (like CORS) if needed, 
-  // but since this is same-origin (/api/tmdb), CORS is automatically handled.
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,

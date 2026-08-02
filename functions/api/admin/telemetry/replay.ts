@@ -1,4 +1,10 @@
-export const onRequestGet: PagesFunction<{ TELEMETRY_BLOBS: R2Bucket }> = async (context) => {
+import type { R2Bucket } from '@cloudflare/workers-types';
+
+export interface Env {
+  TELEMETRY_BLOBS: R2Bucket;
+}
+
+export const onRequestGet: PagesFunction<Env> = async (context) => {
   try {
     const url = new URL(context.request.url);
     const userId = url.searchParams.get("userId");
@@ -9,7 +15,7 @@ export const onRequestGet: PagesFunction<{ TELEMETRY_BLOBS: R2Bucket }> = async 
 
     const listed = await context.env.TELEMETRY_BLOBS.list({ prefix: `traces/${userId}/` });
     
-    const traces = [];
+    const traces: { key: string; data: unknown }[] = [];
     for (const obj of listed.objects) {
       const object = await context.env.TELEMETRY_BLOBS.get(obj.key);
       if (object !== null) {
@@ -21,7 +27,8 @@ export const onRequestGet: PagesFunction<{ TELEMETRY_BLOBS: R2Bucket }> = async 
     return new Response(JSON.stringify({ traces }), {
       headers: { "Content-Type": "application/json" }
     });
-  } catch (error: any) {
-    return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+  } catch (error: unknown) {
+    const err = error as Error;
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 };

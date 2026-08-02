@@ -1,3 +1,5 @@
+import type { D1Database } from '../../lib/db';
+
 export interface Env {
   DB: D1Database;
 }
@@ -22,7 +24,7 @@ interface WatchRequestBody {
   toggleLike?: boolean;
 }
 
-async function getUserIdFromSession(context: EventContext<Env, string, Record<string, unknown>>): Promise<string | null> {
+async function getUserIdFromSession(context: AppEventContext<Env>): Promise<string | null> {
   const cookieHeader = context.request.headers.get("Cookie") || "";
   const match = cookieHeader.match(/session_id=([^;]+)/);
   const sessionId = match ? match[1] : null;
@@ -59,8 +61,8 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
 
   const history = results || [];
   const likedMovies = history
-    .filter((h) => h.rating === 5)
-    .map((h) => h.movie_id);
+    .filter((h: WatchHistoryDbRow) => h.rating === 5)
+    .map((h: WatchHistoryDbRow) => h.movie_id);
 
   return new Response(JSON.stringify({ history, likedMovies }), {
     headers: { "Content-Type": "application/json", ...corsHeaders }
@@ -100,21 +102,15 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
       if (progressSeconds > durationSeconds) progressSeconds = durationSeconds;
     }
 
-    if (!movieId) {
-      return new Response(JSON.stringify({ error: "movieId is required" }), { status: 400, headers: corsHeaders });
-    }
-
     const existing = await context.env.DB.prepare(
       "SELECT id, rating, progress_seconds, last_watched_at FROM user_watch_history WHERE user_id = ? AND movie_id = ?"
     ).bind(userId, movieId).first<{ id: string; rating: number | null; progress_seconds: number; last_watched_at: string }>();
 
-    // Mathematical Security: Temporal Bound Checking
     if (!toggleLike && existing && progressSeconds !== undefined && existing.progress_seconds !== undefined) {
       const now = new Date();
       const lastWatched = new Date(existing.last_watched_at + 'Z');
       const secondsSinceLastUpdate = (now.getTime() - lastWatched.getTime()) / 1000;
       
-      // Allow max 2.5x speed playback + 15s buffer. Clamp if they exceed this.
       const maxAllowedProgress = existing.progress_seconds + (secondsSinceLastUpdate * 2.5) + 15;
       
       if (progressSeconds > existing.progress_seconds && progressSeconds > maxAllowedProgress) {

@@ -1,5 +1,5 @@
 import { authenticateSession } from '../../lib/auth';
-import { getUserFlags, setUserMetadataExt, D1Database } from '../../lib/db';
+import { getUserFlags, setUserMetadataExt, type D1Database } from '../../lib/db';
 
 export interface Env {
   DB: D1Database;

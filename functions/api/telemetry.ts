@@ -1,8 +1,8 @@
 import { authenticateSession } from '../lib/auth';
-import { insertTelemetryBatch } from '../lib/db';
+import { insertTelemetryBatch, type D1Database } from '../lib/db';
 
 export interface Env {
-  DB: any;
+  DB: D1Database;
 }
 
 interface TelemetryEventPayload {
