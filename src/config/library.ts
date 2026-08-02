@@ -25,7 +25,7 @@ export interface SeasonMetadata {
 export interface MovieMetadata {
   id: string;
   type?: 'movie' | 'tv';
-  videoUrl?: string; // Optional for TV shows
+  videoUrl?: string;
   h264Url?: string;
   subtitles?: { lang: string; url: string }[];
   chapters?: { start: number; end: number; title: string }[];
@@ -48,8 +48,9 @@ export const fetchLibrary = async (): Promise<MovieMetadata[]> => {
   if (!res.ok) throw new Error("BIO-005: Failed to fetch library from backend");
   
   const data = await res.json();
+  const moviesList: MovieMetadata[] = Array.isArray(data) ? data : (data.movies || []);
   
-  if (data.length === 0) {
+  if (moviesList.length === 0) {
     return [{
       id: "Leviticus (2026)",
       videoUrl: `${R2_CDN}/${encodeURIComponent("Leviticus (2026)")}/${encodeURIComponent("Leviticus (1080p - 5.1).mp4")}`,
@@ -61,5 +62,5 @@ export const fetchLibrary = async (): Promise<MovieMetadata[]> => {
     }];
   }
   
-  return data;
+  return moviesList;
 };

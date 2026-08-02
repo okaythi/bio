@@ -25,7 +25,7 @@ export default function Dashboard() {
       .catch(() => setSettingsError('BIO-701: Failed to load admin settings'));
     fetch('/api/movies')
       .then(r => r.json())
-      .then(d => setMovies(d))
+      .then(d => setMovies(Array.isArray(d) ? d : (d.movies || [])))
       .catch(console.error);
     fetch('/api/admin/telemetry/stats')
       .then(r => r.json())

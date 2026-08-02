@@ -24,9 +24,9 @@ export default function Home() {
   });
 
   const { data: movies, isLoading: isMoviesLoading } = useQuery({
-    queryKey: ['tmdbMovies', library?.map(m => `${m.id}-${m.title}`).join(',')],
+    queryKey: ['tmdbMovies', Array.isArray(library) ? library.map(m => `${m.id}-${m.title}`).join(',') : ''],
     queryFn: async () => {
-      if (!library) return [];
+      if (!library || !Array.isArray(library)) return [];
       const fetches = library.map(async (meta) => {
         let tmdbData: TMDBMovie | null = null;
         let isTvMatch = false;
