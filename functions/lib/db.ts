@@ -1,6 +1,13 @@
+export interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(): Promise<T | null>;
+  all<T = unknown>(): Promise<{ results: T[]; success: boolean }>; 
+  run(): Promise<unknown>;
+}
+
 export interface D1Database {
-  prepare(query: string): any;
-  batch(stmts: any[]): Promise<any>;
+  prepare(query: string): D1PreparedStatement;
+  batch(stmts: D1PreparedStatement[]): Promise<unknown>;
 }
 
 export async function getSessionUser(db: D1Database, sessionId: string) {

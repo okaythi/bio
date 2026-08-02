@@ -183,7 +183,7 @@ export const onRequest: PagesFunction<Env> = async (context) => {
       if (user && defaultHero) {
         const history = await context.env.DB.prepare(
           "SELECT completed, progress_seconds FROM user_watch_history WHERE user_id = ? AND movie_id = ?"
-        ).bind(user.id, defaultHero).first<{ completed: number, progress_seconds: number }>();
+        ).bind(user.id, defaultHero).first() as { completed: number, progress_seconds: number } | null;
 
         if (history && (history.completed === 1 || history.progress_seconds > 0)) {
           const query = `
