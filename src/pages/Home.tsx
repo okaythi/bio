@@ -89,7 +89,7 @@ export default function Home() {
   }) || [];
 
   const filteredMovies = progressMovies.filter(m => 
-    m.tmdbData.title.toLowerCase().includes(searchQuery.toLowerCase())
+    (m.tmdbData?.title || m.meta?.title || '').toLowerCase().includes((searchQuery || '').toLowerCase())
   );
 
   const continueWatching = progressMovies.filter(m => m.progress > 2.77 && m.progress < 95);
@@ -97,7 +97,7 @@ export default function Home() {
 
   const rawComingSoon = settings?.comingSoonList || [];
   const comingSoonFiltered: { meta: MovieMetadata; tmdbData: TMDBMovie }[] = rawComingSoon.filter((cs: any) => {
-    return !library?.some(lib => lib.title.toLowerCase() === cs.title.toLowerCase() || lib.id === cs.id);
+    return !library?.some(lib => (lib.title || '').toLowerCase() === (cs.title || '').toLowerCase() || lib.id === cs.id);
   }).map((cs: any) => ({
     meta: {
       id: cs.id,

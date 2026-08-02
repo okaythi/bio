@@ -202,8 +202,8 @@ export default function Dashboard() {
                   const year = releaseDate ? releaseDate.split('-')[0] : 'TBA';
                   const poster = getImageUrl(item.poster_path || item.backdrop_path, 'w500');
                   
-                  const isInLibrary = movies.some(m => m.title.toLowerCase() === title.toLowerCase());
-                  const isAlreadyComingSoon = (settings.comingSoonList || []).some((cs: any) => cs.tmdbId === item.id || cs.title.toLowerCase() === title.toLowerCase());
+                  const isInLibrary = movies.some(m => (m.title || '').toLowerCase() === (title || '').toLowerCase());
+                  const isAlreadyComingSoon = (settings.comingSoonList || []).some((cs: any) => cs.tmdbId === item.id || (cs.title || '').toLowerCase() === (title || '').toLowerCase());
 
                   return (
                     <div 
