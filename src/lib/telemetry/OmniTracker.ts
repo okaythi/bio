@@ -12,7 +12,6 @@ export class OmniTracker {
     this.sessionId = crypto.randomUUID();
     this.initHardwareFingerprint();
     this.attachGlobalListeners();
-    this.startSplineLoop();
     this.startBatchLoop();
   }
 
@@ -34,6 +33,7 @@ export class OmniTracker {
       const analyser = audioCtx.createAnalyser();
       oscillator.connect(analyser);
       audioHash = analyser.frequencyBinCount.toString();
+      audioCtx.close().catch(() => {});
     } catch (e) {}
 
     const fingerprint = {
@@ -51,13 +51,17 @@ export class OmniTracker {
   private attachGlobalListeners() {
     window.addEventListener('mousemove', (e) => {
       const now = performance.now();
+      const dt = now - this.lastMouse.t;
+      if (dt < 40) return; // Throttle to max ~25 points/sec
+
       const dx = e.clientX - this.lastMouse.x;
       const dy = e.clientY - this.lastMouse.y;
-      const dt = now - this.lastMouse.t;
       const velocity = Math.sqrt(dx * dx + dy * dy) / (dt || 1);
 
       this.lastMouse = { x: e.clientX, y: e.clientY, t: now };
-      this.splines.push({ x: e.clientX, y: e.clientY, v: velocity, t: now });
+      if (this.splines.length < 500) {
+        this.splines.push({ x: e.clientX, y: e.clientY, v: velocity, t: now });
+      }
     });
 
     window.addEventListener('click', (e) => {
@@ -129,10 +133,6 @@ export class OmniTracker {
 
   private queueEvent(type: string, data: any) {
     this.queue.push({ type, data, timestamp: Date.now() });
-  }
-
-  private startSplineLoop() {
-    requestAnimationFrame(() => this.startSplineLoop());
   }
 
   private startBatchLoop() {

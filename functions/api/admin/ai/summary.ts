@@ -1,4 +1,5 @@
-import { getUserSummaryData, type D1Database } from '../../../lib/db';
+import { getUserSummaryData, getUserFlags, type D1Database } from '../../../lib/db';
+import { authenticateSession } from '../../../lib/auth';
 
 export interface Env {
   AI?: { run(model: string, input: { messages: { role: string; content: string }[] }): Promise<any> };
@@ -19,7 +20,20 @@ interface SummaryActivityStats {
 }
 
 export const onRequestPost: PagesFunction<Env> = async (context) => {
+  const jsonHeaders = { "Content-Type": "application/json" };
+
   try {
+    const { user: caller, error } = await authenticateSession(context.request, context.env.DB);
+    if (error || !caller) {
+      return new Response(JSON.stringify({ error: error || "Unauthorized access." }), { status: 401, headers: jsonHeaders });
+    }
+
+    const callerFlags = await getUserFlags(context.env.DB, caller.id);
+    const isOwner = caller.id === "f9ec8d5b-5e49-4826-86b2-5147bcd58590";
+    if (!isOwner && caller.role !== 'admin' && !callerFlags.includes('is_staff')) {
+      return new Response(JSON.stringify({ error: "Forbidden: Staff privileges required." }), { status: 403, headers: jsonHeaders });
+    }
+
     const { userId } = await context.request.json<{ userId: string }>();
 
     const summaryData = await getUserSummaryData(context.env.DB, userId);

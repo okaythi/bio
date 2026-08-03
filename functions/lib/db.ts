@@ -12,11 +12,11 @@ export interface D1Database {
 
 export async function getSessionUser(db: D1Database, sessionId: string) {
   return await db.prepare(`
-    SELECT users.id, users.email 
+    SELECT users.id, users.email, users.role 
     FROM sessions 
     JOIN users ON sessions.user_id = users.id 
     WHERE sessions.id = ? AND sessions.expires_at > CURRENT_TIMESTAMP
-  `).bind(sessionId).first<{ id: string; email: string }>();
+  `).bind(sessionId).first<{ id: string; email: string; role?: string }>();
 }
 
 export async function getUserMetadataExt(db: D1Database, userId: string, namespace: string) {

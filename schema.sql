@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS user_watch_history (
   watch_count INTEGER DEFAULT 1,
   last_watched_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   metadata_json TEXT DEFAULT '{}',   -- JSON for playback speed, device, skip counts
+  UNIQUE(user_id, movie_id),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 

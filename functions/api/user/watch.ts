@@ -108,15 +108,19 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
 
     if (!toggleLike && existing && progressSeconds !== undefined && existing.progress_seconds !== undefined) {
       const now = new Date();
-      const lastWatched = new Date(existing.last_watched_at + 'Z');
-      const secondsSinceLastUpdate = (now.getTime() - lastWatched.getTime()) / 1000;
-      
-      const maxAllowedProgress = existing.progress_seconds + (secondsSinceLastUpdate * 2.5) + 15;
-      
-      if (progressSeconds > existing.progress_seconds && progressSeconds > maxAllowedProgress) {
-        progressSeconds = maxAllowedProgress;
-        if (durationSeconds !== undefined && durationSeconds > 0 && progressSeconds > durationSeconds) {
-          progressSeconds = durationSeconds;
+      const rawLast = existing.last_watched_at || "";
+      const isoStr = rawLast.includes('T') ? rawLast : rawLast.replace(' ', 'T') + (rawLast.endsWith('Z') ? '' : 'Z');
+      const lastWatched = new Date(isoStr);
+
+      if (!isNaN(lastWatched.getTime())) {
+        const secondsSinceLastUpdate = Math.max(0, (now.getTime() - lastWatched.getTime()) / 1000);
+        const maxAllowedProgress = existing.progress_seconds + (secondsSinceLastUpdate * 2.5) + 15;
+        
+        if (progressSeconds > existing.progress_seconds && progressSeconds > maxAllowedProgress) {
+          progressSeconds = maxAllowedProgress;
+          if (durationSeconds !== undefined && durationSeconds > 0 && progressSeconds > durationSeconds) {
+            progressSeconds = durationSeconds;
+          }
         }
       }
     }
@@ -131,7 +135,7 @@ export const onRequestPost: PagesFunction<Env> = async (context) => {
     await context.env.DB.prepare(`
       INSERT INTO user_watch_history (id, user_id, movie_id, progress_seconds, duration_seconds, completed, rating, last_watched_at)
       VALUES (?, ?, ?, COALESCE(?, 0), COALESCE(?, 0), ?, ?, CURRENT_TIMESTAMP)
-      ON CONFLICT(id) DO UPDATE SET
+      ON CONFLICT(user_id, movie_id) DO UPDATE SET
         progress_seconds = CASE WHEN ? IS NOT NULL THEN ? ELSE progress_seconds END,
         duration_seconds = CASE WHEN ? IS NOT NULL THEN ? ELSE duration_seconds END,
         completed = COALESCE(excluded.completed, completed),

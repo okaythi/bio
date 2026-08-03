@@ -56,6 +56,13 @@ export const onRequestGet: PagesFunction<Env, 'id'> = async (context) => {
   }
 };
 
+const ALLOWED_USER_FIELDS = new Set(['email', 'role', 'status']);
+const ALLOWED_PROFILE_FIELDS = new Set(['display_name', 'avatar_url', 'bio', 'locale', 'timezone']);
+const ALLOWED_SUB_FIELDS = new Set(['plan_tier', 'status', 'expires_at']);
+
+const SAFE_IDENTIFIER_REGEX = /^[a-z_]+$/i;
+const NAMESPACE_REGEX = /^[a-z0-9_-]{1,64}$/i;
+
 export const onRequestPut: PagesFunction<Env, 'id'> = async (context) => {
   const userId = context.params.id as string;
   const db = context.env.DB;
@@ -63,52 +70,93 @@ export const onRequestPut: PagesFunction<Env, 'id'> = async (context) => {
   try {
     const body = await context.request.json<UserUpdateBody>();
     
-    if (body.user) {
+    // Tier 1 & Tier 2 & Tier 3 for body.user
+    if (body.user && typeof body.user === 'object') {
       const updates: string[] = [];
       const values: unknown[] = [];
+      
       for (const [k, v] of Object.entries(body.user)) {
-        if (k !== 'id') {
-          updates.push(`${k} = ?`);
-          values.push(v);
+        // Tier 1: Allowlist check
+        if (!ALLOWED_USER_FIELDS.has(k)) continue;
+        // Tier 3: Strict Identifier Regex Check
+        if (!SAFE_IDENTIFIER_REGEX.test(k)) continue;
+        
+        // Tier 2: Value Sanitization
+        if (k === 'role' && typeof v === 'string') {
+          if (!['user', 'admin'].includes(v)) throw new Error('Invalid user role');
+        } else if (k === 'status' && typeof v === 'string') {
+          if (!['active', 'suspended', 'deleted'].includes(v)) throw new Error('Invalid user status');
+        } else if (k === 'email' && typeof v === 'string') {
+          if (v.length > 255 || !v.includes('@')) throw new Error('Invalid email address');
         }
+
+        updates.push(`${k} = ?`);
+        values.push(v);
       }
+      
       if (updates.length > 0) {
         await db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`).bind(...values, userId).run();
       }
     }
 
-    if (body.profile) {
+    // Tier 1 & Tier 2 & Tier 3 for body.profile
+    if (body.profile && typeof body.profile === 'object') {
       const updates: string[] = [];
       const values: unknown[] = [];
+      
       for (const [k, v] of Object.entries(body.profile)) {
-        if (k !== 'user_id') {
-          updates.push(`${k} = ?`);
-          values.push(v);
+        // Tier 1: Allowlist check
+        if (!ALLOWED_PROFILE_FIELDS.has(k)) continue;
+        // Tier 3: Strict Identifier Regex Check
+        if (!SAFE_IDENTIFIER_REGEX.test(k)) continue;
+        
+        // Tier 2: Value Sanitization
+        if (typeof v === 'string' && v.length > 2000) {
+          throw new Error(`Profile field ${k} exceeds maximum length`);
         }
+
+        updates.push(`${k} = ?`);
+        values.push(v);
       }
+      
       if (updates.length > 0) {
         await db.prepare(`UPDATE user_profiles SET ${updates.join(', ')} WHERE user_id = ?`).bind(...values, userId).run();
       }
     }
 
-    if (body.subscription) {
+    // Tier 1 & Tier 2 & Tier 3 for body.subscription
+    if (body.subscription && typeof body.subscription === 'object') {
       const updates: string[] = [];
       const values: unknown[] = [];
+      
+      const filteredKeys: string[] = [];
+      const filteredVals: unknown[] = [];
+
       for (const [k, v] of Object.entries(body.subscription)) {
-        if (k !== 'user_id') {
-          updates.push(`${k} = ?`);
-          values.push(v);
+        // Tier 1: Allowlist check
+        if (!ALLOWED_SUB_FIELDS.has(k)) continue;
+        // Tier 3: Strict Identifier Regex Check
+        if (!SAFE_IDENTIFIER_REGEX.test(k)) continue;
+
+        // Tier 2: Value Sanitization
+        if (k === 'plan_tier' && typeof v === 'string') {
+          const allowedTiers = ['free', 'basic', 'premium', 'vip', 'vip_silver', 'vip_gold', 'vip_platinum'];
+          if (!allowedTiers.includes(v)) throw new Error('Invalid plan tier');
         }
+
+        updates.push(`${k} = ?`);
+        values.push(v);
+        filteredKeys.push(k);
+        filteredVals.push(v);
       }
+      
       if (updates.length > 0) {
         const existing = await db.prepare("SELECT 1 FROM user_subscriptions WHERE user_id = ?").bind(userId).first();
         if (existing) {
           await db.prepare(`UPDATE user_subscriptions SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE user_id = ?`).bind(...values, userId).run();
         } else {
-          const keys = Object.keys(body.subscription).filter(k => k !== 'user_id');
-          const vals = keys.map(k => (body.subscription as Record<string, unknown>)[k]);
-          const placeholders = keys.map(() => '?').join(', ');
-          await db.prepare(`INSERT INTO user_subscriptions (user_id, ${keys.join(', ')}) VALUES (?, ${placeholders})`).bind(userId, ...vals).run();
+          const placeholders = filteredKeys.map(() => '?').join(', ');
+          await db.prepare(`INSERT INTO user_subscriptions (user_id, ${filteredKeys.join(', ')}) VALUES (?, ${placeholders})`).bind(userId, ...filteredVals).run();
         }
 
         const flagsRow = await db.prepare("SELECT data_json FROM user_metadata_ext WHERE user_id = ? AND namespace = 'flags'").bind(userId).first<{ data_json: string }>();
@@ -117,12 +165,13 @@ export const onRequestPut: PagesFunction<Env, 'id'> = async (context) => {
           try { currentFlags = JSON.parse(flagsRow.data_json).flags || []; } catch {}
         }
 
-        const isVipTier = body.subscription.plan_tier && body.subscription.plan_tier !== 'free';
+        const planTier = body.subscription.plan_tier;
+        const isVipTier = planTier && planTier !== 'free';
         if (isVipTier) {
           if (!currentFlags.includes('vip')) {
             currentFlags.push('vip');
           }
-        } else if (body.subscription.plan_tier === 'free') {
+        } else if (planTier === 'free') {
           currentFlags = currentFlags.filter(f => f !== 'vip');
         }
 
@@ -134,8 +183,18 @@ export const onRequestPut: PagesFunction<Env, 'id'> = async (context) => {
       }
     }
 
+    // Tier 1 & Tier 2 & Tier 3 for body.metadata
     if (body.metadata && Array.isArray(body.metadata)) {
       for (const meta of body.metadata) {
+        if (!meta.namespace || typeof meta.namespace !== 'string' || !NAMESPACE_REGEX.test(meta.namespace)) {
+          throw new Error('Invalid metadata namespace');
+        }
+        if (!meta.data_json || typeof meta.data_json !== 'string') {
+          throw new Error('Invalid metadata data_json');
+        }
+        // Verify JSON validity
+        JSON.parse(meta.data_json);
+
         await db.prepare(`
           INSERT INTO user_metadata_ext (user_id, namespace, data_json, updated_at)
           VALUES (?, ?, ?, CURRENT_TIMESTAMP)
@@ -147,7 +206,7 @@ export const onRequestPut: PagesFunction<Env, 'id'> = async (context) => {
     return new Response(JSON.stringify({ success: true }), { headers: { "Content-Type": "application/json" } });
   } catch (e: unknown) {
     const err = e as Error;
-    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: err.message }), { status: 400, headers: { "Content-Type": "application/json" } });
   }
 };
 
